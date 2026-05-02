@@ -12,5 +12,7 @@ WORKDIR /app
 COPY --from=builder /app/server .
 COPY --from=builder /app/static/ ./static/
 COPY --from=builder /app/mods/ ./mods/
+RUN mkdir -p /app/database
+VOLUME ["/app/database"]
 EXPOSE 8080
 CMD ["./server"]

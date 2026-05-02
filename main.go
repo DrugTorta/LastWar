@@ -32,8 +32,13 @@ func main() {
 		port = "8080"
 	}
 
+	// Создаем папку database если её нет
+	if err := os.MkdirAll("./database", 0755); err != nil {
+		log.Fatal("Failed to create database directory:", err)
+	}
+
 	var err error
-	db, err = sql.Open("sqlite3", "./licenses.db")
+	db, err = sql.Open("sqlite3", "./database/licenses.db")
 	if err != nil {
 		log.Fatal(err)
 	}
