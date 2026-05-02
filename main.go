@@ -352,11 +352,11 @@ func handleDownload(w http.ResponseWriter, r *http.Request) {
 	var filename string
 	switch plan {
 	case "free":
-		filename = "./mods/Free.jar"
+		filename = "mods/Free.jar"
 	case "paid":
-		filename = "./mods/Paid.jar"
+		filename = "mods/Paid.jar"
 	case "alpha":
-		filename = "./mods/Alpha.jar"
+		filename = "mods/Alpha.jar"
 	default:
 		jsonError(w, "Invalid plan", http.StatusBadRequest)
 		return
