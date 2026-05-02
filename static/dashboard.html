@@ -384,7 +384,17 @@ function downloadMod() {
   }
 
   const url = `/api/download?username=${currentUser}&key=${currentLicense.license_key}`;
-  window.location.href = url;
+  
+  // Создаем невидимую ссылку для скачивания
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `LastWar-${currentLicense.plan}.jar`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  
+  // Показываем уведомление
+  alert('Скачивание началось! Если файл не найден, свяжитесь с администратором.');
 }
 
 function logout() {
