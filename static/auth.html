@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LastWar — Вход</title>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --card: rgba(17, 17, 24, 0.6);
+    --border: rgba(124, 58, 237, 0.2);
+    --accent: #7c3aed;
+    --accent2: #a855f7;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --glass: rgba(255, 255, 255, 0.05);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { 
+    background: linear-gradient(135deg, #0a0a0f 0%, #1a0a2e 100%);
+    color: var(--text); 
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .bg-animation {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .bg-animation::before {
+    content: '';
+    position: absolute;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle at 20% 50%, rgba(124, 58, 237, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(168, 85, 247, 0.15) 0%, transparent 50%);
+    animation: bgMove 20s ease-in-out infinite;
+  }
+  @keyframes bgMove {
+    0%, 100% { transform: translate(0, 0); }
+    50% { transform: translate(-50px, -50px); }
+  }
+
+  .auth-container {
+    background: var(--glass);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid var(--border);
+    border-radius: 28px;
+    padding: 48px 40px;
+    width: 420px;
+    max-width: 90%;
+    position: relative;
+    z-index: 1;
+  }
+
+  .logo {
+    text-align: center;
+    font-size: 32px;
+    font-weight: 900;
+    background: linear-gradient(135deg, #7c3aed, #ec4899);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 12px;
+  }
+
+  .subtitle {
+    text-align: center;
+    color: var(--muted);
+    margin-bottom: 36px;
+    font-size: 14px;
+  }
+
+  .tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 32px;
+    background: var(--glass);
+    padding: 4px;
+    border-radius: 12px;
+  }
+
+  .tab {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .tab.active {
+    background: linear-gradient(135deg, #7c3aed, #a855f7);
+    color: #fff;
+  }
+
+  .form-group {
+    margin-bottom: 20px;
+  }
+
+  .form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 13px;
+    color: var(--muted);
+    font-weight: 600;
+  }
+
+  .form-group input {
+    width: 100%;
+    padding: 14px 16px;
+    background: var(--glass);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--text);
+    font-size: 14px;
+    transition: all 0.3s ease;
+  }
+
+  .form-group input:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  .btn {
+    width: 100%;
+    padding: 16px;
+    background: linear-gradient(135deg, #7c3aed, #a855f7);
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 8px;
+  }
+
+  .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 30px rgba(124, 58, 237, 0.3);
+  }
+
+  .error {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #ef4444;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    margin-bottom: 20px;
+    display: none;
+  }
+
+  .back-link {
+    text-align: center;
+    margin-top: 24px;
+  }
+
+  .back-link a {
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 13px;
+    transition: color 0.3s ease;
+  }
+
+  .back-link a:hover {
+    color: var(--text);
+  }
+</style>
+</head>
+<body>
+
+<div class="bg-animation"></div>
+
+<div class="auth-container">
+  <div class="logo">LastWar</div>
+  <div class="subtitle">Авторизация в системе</div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('login')">Вход</button>
+    <button class="tab" onclick="switchTab('register')">Регистрация</button>
+  </div>
+
+  <div class="error" id="error"></div>
+
+  <form id="login-form">
+    <div class="form-group">
+      <label>Логин</label>
+      <input type="text" id="login-username" required>
+    </div>
+    <div class="form-group">
+      <label>Пароль</label>
+      <input type="password" id="login-password" required>
+    </div>
+    <button type="submit" class="btn">Войти</button>
+  </form>
+
+  <form id="register-form" style="display: none;">
+    <div class="form-group">
+      <label>Логин</label>
+      <input type="text" id="register-username" required>
+    </div>
+    <div class="form-group">
+      <label>Пароль</label>
+      <input type="password" id="register-password" required>
+    </div>
+    <div class="form-group">
+      <label>Повторите пароль</label>
+      <input type="password" id="register-password2" required>
+    </div>
+    <button type="submit" class="btn">Зарегистрироваться</button>
+  </form>
+
+  <div class="back-link">
+    <a href="/">← Вернуться на главную</a>
+  </div>
+</div>
+
+<script>
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+  
+  document.getElementById('login-form').style.display = tab === 'login' ? 'block' : 'none';
+  document.getElementById('register-form').style.display = tab === 'register' ? 'block' : 'none';
+  document.getElementById('error').style.display = 'none';
+}
+
+function showError(msg) {
+  const error = document.getElementById('error');
+  error.textContent = msg;
+  error.style.display = 'block';
+}
+
+document.getElementById('login-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  
+  const username = document.getElementById('login-username').value;
+  const password = document.getElementById('login-password').value;
+  
+  try {
+    const res = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    
+    const data = await res.json();
+    
+    if (res.ok && data.success) {
+      localStorage.setItem('username', username);
+      window.location.href = '/dashboard.html';
+    } else {
+      showError(data.error || 'Неверный логин или пароль');
+    }
+  } catch (err) {
+    showError('Ошибка подключения к серверу');
+  }
+});
+
+document.getElementById('register-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  
+  const username = document.getElementById('register-username').value;
+  const password = document.getElementById('register-password').value;
+  const password2 = document.getElementById('register-password2').value;
+  
+  if (password !== password2) {
+    showError('Пароли не совпадают');
+    return;
+  }
+  
+  try {
+    const res = await fetch('/api/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    
+    const data = await res.json();
+    
+    if (res.ok && data.success) {
+      localStorage.setItem('username', username);
+      window.location.href = '/dashboard.html';
+    } else {
+      showError(data.error || 'Ошибка регистрации');
+    }
+  } catch (err) {
+    showError('Ошибка подключения к серверу');
+  }
+});
+</script>
+
+</body>
+</html>

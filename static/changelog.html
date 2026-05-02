@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LastWar — ChangeLog</title>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --card: rgba(17, 17, 24, 0.6);
+    --border: rgba(124, 58, 237, 0.2);
+    --accent: #7c3aed;
+    --accent2: #a855f7;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --glass: rgba(255, 255, 255, 0.05);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { 
+    background: linear-gradient(135deg, #0a0a0f 0%, #1a0a2e 100%);
+    color: var(--text); 
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    min-height: 100vh;
+  }
+
+  .bg-animation {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .bg-animation::before {
+    content: '';
+    position: absolute;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle at 20% 50%, rgba(124, 58, 237, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(168, 85, 247, 0.15) 0%, transparent 50%);
+    animation: bgMove 20s ease-in-out infinite;
+  }
+  @keyframes bgMove {
+    0%, 100% { transform: translate(0, 0); }
+    50% { transform: translate(-50px, -50px); }
+  }
+
+  nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 60px;
+    position: sticky;
+    top: 0;
+    background: rgba(10, 10, 15, 0.7);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-bottom: 1px solid var(--border);
+    z-index: 100;
+  }
+  .logo { 
+    font-size: 24px; 
+    font-weight: 900; 
+    background: linear-gradient(135deg, #7c3aed, #ec4899);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -1px;
+    text-decoration: none;
+  }
+
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 60px 20px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .title {
+    text-align: center;
+    font-size: 48px;
+    font-weight: 900;
+    margin-bottom: 20px;
+    letter-spacing: -2px;
+  }
+  .subtitle {
+    text-align: center;
+    color: var(--muted);
+    margin-bottom: 60px;
+    font-size: 18px;
+  }
+
+  .tabs {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    margin-bottom: 40px;
+    flex-wrap: wrap;
+  }
+  .tab {
+    background: var(--glass);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 12px 32px;
+    border-radius: 16px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+  .tab:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }
+  .tab.active {
+    background: linear-gradient(135deg, #7c3aed, #a855f7);
+    border-color: transparent;
+  }
+
+  .changelog-content {
+    display: none;
+  }
+  .changelog-content.active {
+    display: block;
+  }
+
+  .changelog-item {
+    background: var(--glass);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 32px;
+    margin-bottom: 24px;
+    transition: all 0.3s ease;
+  }
+  .changelog-item:hover {
+    border-color: var(--accent);
+    transform: translateX(8px);
+  }
+  .changelog-date {
+    color: var(--accent);
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .changelog-title {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 16px;
+  }
+  .changelog-desc {
+    color: var(--muted);
+    line-height: 1.7;
+    font-size: 15px;
+  }
+  .changelog-list {
+    list-style: none;
+    margin-top: 16px;
+  }
+  .changelog-list li {
+    padding: 8px 0;
+    padding-left: 24px;
+    position: relative;
+    color: var(--muted);
+  }
+  .changelog-list li::before {
+    content: '•';
+    position: absolute;
+    left: 0;
+    color: var(--accent);
+    font-size: 20px;
+  }
+
+  @media (max-width: 768px) {
+    nav { padding: 16px 24px; }
+    .container { padding: 40px 20px; }
+    .title { font-size: 36px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="bg-animation"></div>
+
+<nav>
+  <a href="/" class="logo">LastWar</a>
+</nav>
+
+<div class="container">
+  <h1 class="title">ChangeLog</h1>
+  <p class="subtitle">История обновлений по версиям</p>
+
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('free')">Free</button>
+    <button class="tab" onclick="showTab('paid')">Paid</button>
+    <button class="tab" onclick="showTab('alpha')">Alpha</button>
+  </div>
+
+  <div id="free" class="changelog-content active">
+    <div class="changelog-item">
+      <div class="changelog-date">02.05.2026</div>
+      <div class="changelog-title">v2.1.0 — Система лицензий</div>
+      <div class="changelog-desc">
+        Добавлена система лицензий с тремя тарифами. Free версия получила базовый функционал.
+      </div>
+      <ul class="changelog-list">
+        <li>Добавлен AI KillAura с базовыми режимами</li>
+        <li>ESP и NameTags для отображения игроков</li>
+        <li>Movement модули для передвижения</li>
+        <li>Nuker для автоматической добычи блоков</li>
+        <li>Helpers для быстрого использования предметов</li>
+      </ul>
+    </div>
+
+    <div class="changelog-item">
+      <div class="changelog-date">28.04.2026</div>
+      <div class="changelog-title">v2.0.5 — Исправления</div>
+      <div class="changelog-desc">
+        Исправлены критические баги и улучшена производительность.
+      </div>
+      <ul class="changelog-list">
+        <li>Исправлены баги с ESP на серверах FunTime</li>
+        <li>Улучшена производительность Nuker</li>
+        <li>Оптимизация использования памяти</li>
+      </ul>
+    </div>
+  </div>
+
+  <div id="paid" class="changelog-content">
+    <div class="changelog-item">
+      <div class="changelog-date">02.05.2026</div>
+      <div class="changelog-title">v2.1.0 — AutoBuy и улучшения</div>
+      <div class="changelog-desc">
+        Paid версия получила эксклюзивный модуль AutoBuy и улучшенную скрытность.
+      </div>
+      <ul class="changelog-list">
+        <li>Добавлен AutoBuy для автоматической покупки на аукционе</li>
+        <li>Улучшена система скрытности читов</li>
+        <li>Стабильные обновления каждую неделю</li>
+        <li>Приоритетная поддержка в Discord</li>
+        <li>Уникальная роль в Discord сервере</li>
+      </ul>
+    </div>
+
+    <div class="changelog-item">
+      <div class="changelog-date">28.04.2026</div>
+      <div class="changelog-title">v2.0.5 — Обходы античитов</div>
+      <div class="changelog-desc">
+        Обновлены обходы для популярных серверов.
+      </div>
+      <ul class="changelog-list">
+        <li>Новые обходы для FunTime античита</li>
+        <li>Улучшена работа на HollyWorld</li>
+        <li>Добавлены новые режимы для Helpers</li>
+        <li>Оптимизация AI KillAura</li>
+      </ul>
+    </div>
+
+    <div class="changelog-item">
+      <div class="changelog-date">15.04.2026</div>
+      <div class="changelog-title">v2.0.0 — Полная переработка</div>
+      <div class="changelog-desc">
+        Полная переработка AI KillAura и системы обхода античитов.
+      </div>
+      <ul class="changelog-list">
+        <li>Новая AI система для KillAura</li>
+        <li>Поддержка Minecraft 1.21.4</li>
+        <li>Улучшенная производительность</li>
+      </ul>
+    </div>
+  </div>
+
+  <div id="alpha" class="changelog-content">
+    <div class="changelog-item">
+      <div class="changelog-date">02.05.2026</div>
+      <div class="changelog-title">v2.1.0 — Ранний доступ</div>
+      <div class="changelog-desc">
+        Alpha пользователи получили ранний доступ к новым функциям за неделю до релиза.
+      </div>
+      <ul class="changelog-list">
+        <li>Ранний доступ к AutoBuy (за неделю до Paid)</li>
+        <li>Эксклюзивные настройки AI KillAura</li>
+        <li>Личное общение с разработчиком</li>
+        <li>Приоритетное рассмотрение предложений</li>
+        <li>Тестирование новых функций</li>
+      </ul>
+    </div>
+
+    <div class="changelog-item">
+      <div class="changelog-date">28.04.2026</div>
+      <div class="changelog-title">v2.0.6-alpha — Экспериментальные функции</div>
+      <div class="changelog-desc">
+        Тестирование новых экспериментальных функций перед релизом.
+      </div>
+      <ul class="changelog-list">
+        <li>Тестирование нового AutoSell модуля</li>
+        <li>Экспериментальные режимы KillAura</li>
+        <li>Новые обходы для античитов (в тестировании)</li>
+        <li>Улучшенная система HWID защиты</li>
+      </ul>
+    </div>
+
+    <div class="changelog-item">
+      <div class="changelog-date">15.04.2026</div>
+      <div class="changelog-title">v2.0.0-alpha — Первый альфа релиз</div>
+      <div class="changelog-desc">
+        Первый релиз Alpha версии с эксклюзивными функциями.
+      </div>
+      <ul class="changelog-list">
+        <li>Ранний доступ к AI KillAura 2.0</li>
+        <li>Эксклюзивные настройки для продвинутых пользователей</li>
+        <li>Прямая связь с разработчиком</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+function showTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.changelog-content').forEach(c => c.classList.remove('active'));
+  
+  event.target.classList.add('active');
+  document.getElementById(tab).classList.add('active');
+}
+</script>
+
+</body>
+</html>

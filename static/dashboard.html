@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LastWar — Личный кабинет</title>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --card: rgba(17, 17, 24, 0.6);
+    --border: rgba(124, 58, 237, 0.2);
+    --accent: #7c3aed;
+    --accent2: #a855f7;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --glass: rgba(255, 255, 255, 0.05);
+    --green: #22c55e;
+    --red: #ef4444;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { 
+    background: linear-gradient(135deg, #0a0a0f 0%, #1a0a2e 100%);
+    color: var(--text); 
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    min-height: 100vh;
+  }
+
+  .bg-animation {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .bg-animation::before {
+    content: '';
+    position: absolute;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle at 20% 50%, rgba(124, 58, 237, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(168, 85, 247, 0.15) 0%, transparent 50%);
+    animation: bgMove 20s ease-in-out infinite;
+  }
+  @keyframes bgMove {
+    0%, 100% { transform: translate(0, 0); }
+    50% { transform: translate(-50px, -50px); }
+  }
+
+  nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 60px;
+    position: sticky;
+    top: 0;
+    background: rgba(10, 10, 15, 0.7);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-bottom: 1px solid var(--border);
+    z-index: 100;
+  }
+  .logo { 
+    font-size: 24px; 
+    font-weight: 900; 
+    background: linear-gradient(135deg, #7c3aed, #ec4899);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -1px;
+  }
+  .user-info {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .username {
+    color: var(--muted);
+    font-size: 14px;
+  }
+  .logout-btn {
+    background: var(--glass);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 20px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+  .logout-btn:hover {
+    border-color: var(--accent);
+  }
+
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 60px 20px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .title {
+    font-size: 42px;
+    font-weight: 900;
+    margin-bottom: 12px;
+    letter-spacing: -1px;
+  }
+  .subtitle {
+    color: var(--muted);
+    margin-bottom: 48px;
+    font-size: 16px;
+  }
+
+  .card {
+    background: var(--glass);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 32px;
+    margin-bottom: 24px;
+  }
+
+  .card-title {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 20px;
+  }
+
+  .status-badge {
+    display: inline-block;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 16px;
+  }
+  .status-free { background: rgba(100, 116, 139, 0.2); color: #94a3b8; }
+  .status-paid { background: rgba(124, 58, 237, 0.2); color: #a78bfa; }
+  .status-alpha { background: rgba(234, 179, 8, 0.2); color: #fbbf24; }
+  .status-none { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+
+  .info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .info-row:last-child {
+    border: none;
+  }
+  .info-label {
+    color: var(--muted);
+    font-size: 14px;
+  }
+  .info-value {
+    font-weight: 600;
+    font-size: 14px;
+    font-family: monospace;
+  }
+
+  .btn {
+    display: inline-block;
+    padding: 14px 28px;
+    background: linear-gradient(135deg, #7c3aed, #a855f7);
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    text-align: center;
+  }
+  .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 30px rgba(124, 58, 237, 0.3);
+  }
+  .btn-secondary {
+    background: var(--glass);
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+  .btn-secondary:hover {
+    border-color: var(--accent);
+    box-shadow: none;
+  }
+
+  .input-group {
+    display: flex;
+    gap: 12px;
+    margin-top: 16px;
+  }
+  .input-group input {
+    flex: 1;
+    padding: 12px 16px;
+    background: var(--glass);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--text);
+    font-size: 14px;
+  }
+  .input-group input:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  .download-section {
+    text-align: center;
+    padding: 40px;
+  }
+  .download-icon {
+    font-size: 64px;
+    margin-bottom: 20px;
+  }
+  .download-text {
+    color: var(--muted);
+    margin-bottom: 24px;
+  }
+
+  @media (max-width: 768px) {
+    nav { padding: 16px 24px; }
+    .container { padding: 40px 20px; }
+    .title { font-size: 32px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="bg-animation"></div>
+
+<nav>
+  <div class="logo">LastWar</div>
+  <div class="user-info">
+    <span class="username" id="nav-username"></span>
+    <button class="logout-btn" onclick="logout()">Выйти</button>
+  </div>
+</nav>
+
+<div class="container">
+  <h1 class="title">Личный кабинет</h1>
+  <p class="subtitle">Управление лицензией и скачивание мода</p>
+
+  <div class="card">
+    <div class="card-title">Статус лицензии</div>
+    <div id="license-status"></div>
+  </div>
+
+  <div class="card" id="activate-card" style="display: none;">
+    <div class="card-title">Активировать ключ</div>
+    <p style="color: var(--muted); margin-bottom: 16px;">Введите лицензионный ключ для активации</p>
+    <div class="input-group">
+      <input type="text" id="key-input" placeholder="LW-XXXX-XXXX-XXXX-XXXX">
+      <button class="btn" onclick="activateKey()">Активировать</button>
+    </div>
+    <p style="color: var(--muted); font-size: 13px; margin-top: 12px;">
+      Для бесплатной версии используйте ключ: <code style="color: var(--accent);">Free</code>
+    </p>
+  </div>
+
+  <div class="card" id="download-card" style="display: none;">
+    <div class="download-section">
+      <div class="download-icon">📦</div>
+      <div class="download-text">Ваш мод готов к скачиванию</div>
+      <button class="btn" onclick="downloadMod()">Скачать LastWar Client</button>
+      <p style="color: var(--muted); font-size: 13px; margin-top: 16px;">
+        Мод автоматически настроен с вашим ключом
+      </p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Дополнительные услуги</div>
+    <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+      <a href="/buy.html" class="btn">Купить лицензию</a>
+      <a href="https://funpay.com/users/16520541/" target="_blank" class="btn btn-secondary">Сброс HWID (199₽)</a>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentUser = null;
+let currentLicense = null;
+
+async function loadUserInfo() {
+  const username = localStorage.getItem('username');
+  if (!username) {
+    window.location.href = '/auth.html';
+    return;
+  }
+
+  currentUser = username;
+  document.getElementById('nav-username').textContent = username;
+
+  try {
+    const res = await fetch(`/api/user/info?username=${username}`);
+    const data = await res.json();
+
+    if (data.has_license) {
+      currentLicense = data;
+      showLicenseInfo(data);
+      document.getElementById('download-card').style.display = 'block';
+    } else {
+      showNoLicense();
+      document.getElementById('activate-card').style.display = 'block';
+    }
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+function showLicenseInfo(data) {
+  const planNames = { free: 'Free', paid: 'Paid', alpha: 'Alpha' };
+  const planClasses = { free: 'status-free', paid: 'status-paid', alpha: 'status-alpha' };
+
+  const html = `
+    <div class="status-badge ${planClasses[data.plan]}">${planNames[data.plan]}</div>
+    <div class="info-row">
+      <span class="info-label">Лицензионный ключ:</span>
+      <span class="info-value">${data.license_key}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">HWID:</span>
+      <span class="info-value">${data.hwid || 'Не привязан'}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Истекает:</span>
+      <span class="info-value">${data.expires_at || 'Бессрочно'}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Статус:</span>
+      <span class="info-value" style="color: ${data.active ? 'var(--green)' : 'var(--red)'}">
+        ${data.active ? 'Активна' : 'Отозвана'}
+      </span>
+    </div>
+  `;
+
+  document.getElementById('license-status').innerHTML = html;
+}
+
+function showNoLicense() {
+  const html = `
+    <div class="status-badge status-none">Нет лицензии</div>
+    <p style="color: var(--muted);">У вас пока нет активной лицензии. Активируйте ключ ниже или купите новый.</p>
+  `;
+  document.getElementById('license-status').innerHTML = html;
+}
+
+async function activateKey() {
+  const key = document.getElementById('key-input').value.trim();
+  if (!key) {
+    alert('Введите ключ');
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/user/activate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: currentUser, key })
+    });
+
+    const data = await res.json();
+
+    if (res.ok && data.success) {
+      alert('Ключ успешно активирован!');
+      location.reload();
+    } else {
+      alert(data.error || 'Ошибка активации ключа');
+    }
+  } catch (err) {
+    alert('Ошибка подключения к серверу');
+  }
+}
+
+function downloadMod() {
+  if (!currentLicense) {
+    alert('Нет активной лицензии');
+    return;
+  }
+
+  const url = `/api/download?username=${currentUser}&key=${currentLicense.license_key}`;
+  window.location.href = url;
+}
+
+function logout() {
+  localStorage.removeItem('username');
+  window.location.href = '/';
+}
+
+loadUserInfo();
+</script>
+
+</body>
+</html>
