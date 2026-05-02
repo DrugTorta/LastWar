@@ -49,6 +49,19 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// Таблица пользователей
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS users (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		username TEXT UNIQUE NOT NULL,
+		password TEXT NOT NULL,
+		license_key TEXT,
+		created_at TEXT NOT NULL,
+		FOREIGN KEY(license_key) REFERENCES licenses(key)
+	)`)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	// Добавляем бесплатный ключ "Free" если его нет
 	_, err = db.Exec(`INSERT OR IGNORE INTO licenses (key, plan, created_at, active, note) VALUES (?, ?, ?, ?, ?)`,
 		"Free", "free", time.Now().Format(time.RFC3339), 1, "Бесплатная версия для всех")
@@ -63,6 +76,11 @@ func main() {
 
 	// API
 	http.HandleFunc("/api/validate", handleValidate)
+	http.HandleFunc("/api/register", handleRegister)
+	http.HandleFunc("/api/login", handleLogin)
+	http.HandleFunc("/api/user/info", handleUserInfo)
+	http.HandleFunc("/api/user/activate", handleActivateKey)
+	http.HandleFunc("/api/download", handleDownload)
 	http.HandleFunc("/api/admin/generate", withAuth(handleGenerate))
 	http.HandleFunc("/api/admin/keys", withAuth(handleListKeys))
 	http.HandleFunc("/api/admin/revoke", withAuth(handleRevoke))
@@ -93,6 +111,235 @@ func withAuth(next http.HandlerFunc) http.HandlerFunc {
 		}
 		next(w, r)
 	}
+}
+
+// ── API: Регистрация ──────────────────────────────────────────────────────────
+
+func handleRegister(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		jsonError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		jsonError(w, "Bad request", http.StatusBadRequest)
+		return
+	}
+
+	req.Username = strings.TrimSpace(req.Username)
+	req.Password = strings.TrimSpace(req.Password)
+
+	if req.Username == "" || req.Password == "" {
+		jsonError(w, "Username and password required", http.StatusBadRequest)
+		return
+	}
+
+	// Хешируем пароль (простой способ, для продакшена используйте bcrypt)
+	hashedPassword := fmt.Sprintf("%x", []byte(req.Password))
+
+	_, err := db.Exec(
+		`INSERT INTO users (username, password, created_at) VALUES (?, ?, ?)`,
+		req.Username, hashedPassword, time.Now().Format(time.RFC3339),
+	)
+	if err != nil {
+		jsonError(w, "Username already exists", http.StatusConflict)
+		return
+	}
+
+	jsonResponse(w, map[string]any{"success": true, "message": "User registered"})
+}
+
+// ── API: Логин ────────────────────────────────────────────────────────────────
+
+func handleLogin(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		jsonError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		jsonError(w, "Bad request", http.StatusBadRequest)
+		return
+	}
+
+	hashedPassword := fmt.Sprintf("%x", []byte(req.Password))
+
+	var licenseKey sql.NullString
+	err := db.QueryRow(
+		`SELECT license_key FROM users WHERE username=? AND password=?`,
+		req.Username, hashedPassword,
+	).Scan(&licenseKey)
+
+	if err == sql.ErrNoRows {
+		jsonError(w, "Invalid credentials", http.StatusUnauthorized)
+		return
+	}
+	if err != nil {
+		jsonError(w, "DB error", http.StatusInternalServerError)
+		return
+	}
+
+	jsonResponse(w, map[string]any{
+		"success":     true,
+		"username":    req.Username,
+		"license_key": licenseKey.String,
+	})
+}
+
+// ── API: Информация о пользователе ────────────────────────────────────────────
+
+func handleUserInfo(w http.ResponseWriter, r *http.Request) {
+	username := r.URL.Query().Get("username")
+	if username == "" {
+		jsonError(w, "Username required", http.StatusBadRequest)
+		return
+	}
+
+	var licenseKey sql.NullString
+	err := db.QueryRow(`SELECT license_key FROM users WHERE username=?`, username).Scan(&licenseKey)
+	if err == sql.ErrNoRows {
+		jsonError(w, "User not found", http.StatusNotFound)
+		return
+	}
+	if err != nil {
+		jsonError(w, "DB error", http.StatusInternalServerError)
+		return
+	}
+
+	if !licenseKey.Valid || licenseKey.String == "" {
+		jsonResponse(w, map[string]any{
+			"has_license": false,
+			"plan":        "none",
+		})
+		return
+	}
+
+	var plan, hwid, expiresAt string
+	var active int
+	err = db.QueryRow(
+		`SELECT plan, COALESCE(hwid,''), COALESCE(expires_at,''), active FROM licenses WHERE key=?`,
+		licenseKey.String,
+	).Scan(&plan, &hwid, &expiresAt, &active)
+
+	if err != nil {
+		jsonError(w, "License not found", http.StatusNotFound)
+		return
+	}
+
+	jsonResponse(w, map[string]any{
+		"has_license": true,
+		"license_key": licenseKey.String,
+		"plan":        plan,
+		"hwid":        hwid,
+		"expires_at":  expiresAt,
+		"active":      active == 1,
+	})
+}
+
+// ── API: Активация ключа ──────────────────────────────────────────────────────
+
+func handleActivateKey(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		jsonError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		Username string `json:"username"`
+		Key      string `json:"key"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		jsonError(w, "Bad request", http.StatusBadRequest)
+		return
+	}
+
+	req.Key = strings.TrimSpace(req.Key)
+
+	// Проверяем существование ключа
+	var plan string
+	var active int
+	err := db.QueryRow(`SELECT plan, active FROM licenses WHERE key=?`, req.Key).Scan(&plan, &active)
+	if err == sql.ErrNoRows {
+		jsonError(w, "Invalid key", http.StatusNotFound)
+		return
+	}
+	if err != nil {
+		jsonError(w, "DB error", http.StatusInternalServerError)
+		return
+	}
+
+	if active == 0 {
+		jsonError(w, "Key is revoked", http.StatusForbidden)
+		return
+	}
+
+	// Привязываем ключ к пользователю
+	_, err = db.Exec(`UPDATE users SET license_key=? WHERE username=?`, req.Key, req.Username)
+	if err != nil {
+		jsonError(w, "Failed to activate key", http.StatusInternalServerError)
+		return
+	}
+
+	jsonResponse(w, map[string]any{
+		"success": true,
+		"plan":    plan,
+		"key":     req.Key,
+	})
+}
+
+// ── API: Скачивание мода ──────────────────────────────────────────────────────
+
+func handleDownload(w http.ResponseWriter, r *http.Request) {
+	username := r.URL.Query().Get("username")
+	key := r.URL.Query().Get("key")
+
+	if username == "" || key == "" {
+		jsonError(w, "Username and key required", http.StatusBadRequest)
+		return
+	}
+
+	// Проверяем что ключ принадлежит пользователю
+	var userKey sql.NullString
+	err := db.QueryRow(`SELECT license_key FROM users WHERE username=?`, username).Scan(&userKey)
+	if err != nil || !userKey.Valid || userKey.String != key {
+		jsonError(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Получаем план
+	var plan string
+	err = db.QueryRow(`SELECT plan FROM licenses WHERE key=?`, key).Scan(&plan)
+	if err != nil {
+		jsonError(w, "Invalid key", http.StatusNotFound)
+		return
+	}
+
+	// Определяем файл для скачивания
+	var filename string
+	switch plan {
+	case "free":
+		filename = "mods/Free.jar"
+	case "paid":
+		filename = "mods/Paid.jar"
+	case "alpha":
+		filename = "mods/Alpha.jar"
+	default:
+		jsonError(w, "Invalid plan", http.StatusBadRequest)
+		return
+	}
+
+	// Создаем временный файл с токеном
+	// TODO: Здесь нужно модифицировать JAR файл и добавить token.txt
+	// Пока просто отдаем оригинальный файл
+	http.ServeFile(w, r, filename)
 }
 
 // ── API: Валидация ключа (вызывается из мода) ─────────────────────────────────
@@ -199,6 +446,10 @@ func handleGenerate(w http.ResponseWriter, r *http.Request) {
 	var expiresAt *string
 	if req.Days > 0 {
 		t := time.Now().AddDate(0, 0, req.Days).Format(time.RFC3339)
+		expiresAt = &t
+	} else if req.Days == -1 {
+		// Тестовый ключ на 2 минуты
+		t := time.Now().Add(2 * time.Minute).Format(time.RFC3339)
 		expiresAt = &t
 	}
 
