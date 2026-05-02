@@ -273,6 +273,15 @@
   <h1 class="title">Купить доступ</h1>
   <p class="subtitle">Выберите версию и продолжительность</p>
 
+  <div id="login-required" style="text-align: center; padding: 60px 20px;">
+    <div style="font-size: 48px; margin-bottom: 20px;">🔒</div>
+    <h2 style="margin-bottom: 16px;">Требуется авторизация</h2>
+    <p style="color: var(--muted); margin-bottom: 32px;">Для покупки необходимо войти в аккаунт</p>
+    <a href="/auth.html" class="btn">Войти или зарегистрироваться</a>
+  </div>
+
+  <div id="buy-content" style="display: none;">
+
   <div class="plan-selector">
     <div class="plan-card" onclick="selectPlan('paid')">
       <div class="plan-name">Paid</div>
@@ -316,9 +325,64 @@
   </button>
 
   <p class="note">После оплаты ключ будет выдан автоматически в течение 5 минут</p>
+  </div>
 </div>
 
 <script>
+// Проверка авторизации
+const username = localStorage.getItem('username');
+if (!username) {
+  document.getElementById('login-required').style.display = 'block';
+  document.getElementById('buy-content').style.display = 'none';
+} else {
+  document.getElementById('login-required').style.display = 'none';
+  document.getElementById('buy-content').style.display = 'block';
+  
+  // Перемещаем весь контент в buy-content
+  const content = `
+    <div class="plan-selector">
+      <div class="plan-card" onclick="selectPlan('paid')">
+        <div class="plan-name">Paid</div>
+        <div class="plan-desc">Все функции + AutoBuy + Стабильные обновления</div>
+      </div>
+      <div class="plan-card" onclick="selectPlan('alpha')">
+        <div class="plan-name">Alpha</div>
+        <div class="plan-desc">Все функции Paid + Ранние обновления + Личное общение</div>
+      </div>
+      <div class="plan-card" onclick="selectPlan('hwid-reset')">
+        <div class="plan-name">Сброс HWID</div>
+        <div class="plan-desc">Отвязка ключа от текущего компьютера</div>
+      </div>
+    </div>
+
+    <div class="duration-selector">
+      <div class="duration-title">Выберите продолжительность</div>
+      <div class="duration-options" id="duration-options"></div>
+    </div>
+
+    <div class="summary">
+      <div class="summary-title">Итого</div>
+      <div class="summary-row">
+        <span class="summary-label">Версия:</span>
+        <span class="summary-value" id="summary-plan">Не выбрано</span>
+      </div>
+      <div class="summary-row">
+        <span class="summary-label">Продолжительность:</span>
+        <span class="summary-value" id="summary-duration">Не выбрано</span>
+      </div>
+      <div class="summary-row">
+        <span class="summary-label">Цена:</span>
+        <span class="summary-value" id="summary-price">0 ₽</span>
+      </div>
+    </div>
+
+    <button class="buy-button" id="buy-button" onclick="buyNow()" disabled>
+      Купить на FunPay
+    </button>
+  `;
+  document.getElementById('buy-content').innerHTML = content;
+}
+
 const prices = {
   paid: {
     30: 199,
