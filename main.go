@@ -71,8 +71,14 @@ func main() {
 
 	// Статические файлы
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
+	
+	// Страницы
 	http.HandleFunc("/", serveIndex)
 	http.HandleFunc("/admin", serveAdmin)
+	http.HandleFunc("/auth.html", serveAuth)
+	http.HandleFunc("/dashboard.html", serveDashboard)
+	http.HandleFunc("/buy.html", serveBuy)
+	http.HandleFunc("/changelog.html", serveChangelog)
 
 	// API
 	http.HandleFunc("/api/validate", handleValidate)
@@ -93,11 +99,31 @@ func main() {
 // ── Страницы ──────────────────────────────────────────────────────────────────
 
 func serveIndex(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/" {
+		http.NotFound(w, r)
+		return
+	}
 	http.ServeFile(w, r, "static/index.html")
 }
 
 func serveAdmin(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, "static/admin.html")
+}
+
+func serveAuth(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, "static/auth.html")
+}
+
+func serveDashboard(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, "static/dashboard.html")
+}
+
+func serveBuy(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, "static/buy.html")
+}
+
+func serveChangelog(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, "static/changelog.html")
 }
 
 // ── Middleware ────────────────────────────────────────────────────────────────
