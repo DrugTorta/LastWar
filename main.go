@@ -393,12 +393,15 @@ func handleDownload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Создаем модифицированный JAR с токеном
+	log.Printf("Adding token to JAR: %s", filename)
 	modifiedJar, err := addTokenToJar(filename, key)
 	if err != nil {
 		log.Printf("Error adding token to JAR: %v", err)
 		jsonError(w, "Error preparing mod file", http.StatusInternalServerError)
 		return
 	}
+	
+	log.Printf("Successfully created modified JAR with token, size: %d bytes", len(modifiedJar))
 
 	// Устанавливаем заголовки для скачивания
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=LastWar-%s.jar", plan))
@@ -414,39 +417,47 @@ func handleDownload(w http.ResponseWriter, r *http.Request) {
 // ── Добавление token.txt в JAR ────────────────────────────────────────────────
 
 func addTokenToJar(jarPath string, token string) ([]byte, error) {
+	log.Printf("Opening JAR file: %s", jarPath)
+	
 	// Читаем оригинальный JAR
 	jarFile, err := os.Open(jarPath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to open JAR: %w", err)
 	}
 	defer jarFile.Close()
 
 	jarInfo, err := jarFile.Stat()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to stat JAR: %w", err)
 	}
+	
+	log.Printf("Original JAR size: %d bytes", jarInfo.Size())
 
 	// Читаем JAR как ZIP
 	zipReader, err := zip.NewReader(jarFile, jarInfo.Size())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to read JAR as ZIP: %w", err)
 	}
+	
+	log.Printf("JAR contains %d files", len(zipReader.File))
 
 	// Создаем новый ZIP в памяти
 	buf := new(bytes.Buffer)
 	zipWriter := zip.NewWriter(buf)
 
 	// Копируем все файлы из оригинального JAR
+	copiedFiles := 0
 	for _, file := range zipReader.File {
 		// Пропускаем старый token.txt если он есть
 		if file.Name == "token.txt" {
+			log.Printf("Skipping existing token.txt")
 			continue
 		}
 
 		// Копируем файл
 		fileReader, err := file.Open()
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to open file %s: %w", file.Name, err)
 		}
 
 		header := &zip.FileHeader{
@@ -457,31 +468,38 @@ func addTokenToJar(jarPath string, token string) ([]byte, error) {
 		writer, err := zipWriter.CreateHeader(header)
 		if err != nil {
 			fileReader.Close()
-			return nil, err
+			return nil, fmt.Errorf("failed to create header for %s: %w", file.Name, err)
 		}
 
 		_, err = io.Copy(writer, fileReader)
 		fileReader.Close()
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to copy file %s: %w", file.Name, err)
 		}
+		
+		copiedFiles++
 	}
+	
+	log.Printf("Copied %d files from original JAR", copiedFiles)
 
 	// Добавляем token.txt
+	log.Printf("Adding token.txt with content: %s", token)
 	tokenWriter, err := zipWriter.Create("token.txt")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create token.txt: %w", err)
 	}
 	_, err = tokenWriter.Write([]byte(token))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to write token: %w", err)
 	}
 
 	// Закрываем ZIP writer
 	err = zipWriter.Close()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to close ZIP writer: %w", err)
 	}
+	
+	log.Printf("Successfully created modified JAR, final size: %d bytes", buf.Len())
 
 	return buf.Bytes(), nil
 }
