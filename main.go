@@ -348,6 +348,10 @@ func handleDownload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Логируем текущую директорию
+	cwd, _ := os.Getwd()
+	log.Printf("Current working directory: %s", cwd)
+
 	// Определяем файл для скачивания
 	var filename string
 	switch plan {
@@ -366,11 +370,22 @@ func handleDownload(w http.ResponseWriter, r *http.Request) {
 	if _, err := os.Stat(filename); os.IsNotExist(err) {
 		log.Printf("File not found: %s", filename)
 		
-		// Временная заглушка для тестирования
-		w.Header().Set("Content-Type", "text/plain")
-		fmt.Fprintf(w, "Мод для плана %s пока не загружен на сервер.\n", plan)
-		fmt.Fprintf(w, "Ожидаемый файл: %s\n", filename)
-		fmt.Fprintf(w, "\nСвяжитесь с администратором для загрузки файла.")
+		// Проверяем что есть в текущей директории
+		files, _ := os.ReadDir(".")
+		log.Printf("Files in current directory:")
+		for _, f := range files {
+			log.Printf("  - %s (dir: %v)", f.Name(), f.IsDir())
+		}
+		
+		// Проверяем папку mods если она есть
+		if modsFiles, err := os.ReadDir("mods"); err == nil {
+			log.Printf("Files in mods directory:")
+			for _, f := range modsFiles {
+				log.Printf("  - %s", f.Name())
+			}
+		}
+		
+		jsonError(w, "Mod file not found on server. Check Railway logs.", http.StatusNotFound)
 		return
 	}
 
