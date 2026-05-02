@@ -7,112 +7,497 @@
 <style>
   :root {
     --bg: #0a0a0f;
-    --card: #111118;
-    --border: #1e1e2e;
+    --card: rgba(17, 17, 24, 0.6);
+    --border: rgba(124, 58, 237, 0.2);
     --accent: #7c3aed;
     --accent2: #a855f7;
     --text: #e2e8f0;
-    --muted: #64748b;
+    --muted: #94a3b8;
     --green: #22c55e;
+    --glass: rgba(255, 255, 255, 0.05);
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; }
-
-  /* NAV */
-  nav {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 18px 60px; border-bottom: 1px solid var(--border);
-    position: sticky; top: 0; background: rgba(10,10,15,0.95); backdrop-filter: blur(10px); z-index: 100;
+  body { 
+    background: linear-gradient(135deg, #0a0a0f 0%, #1a0a2e 100%);
+    color: var(--text); 
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    overflow-x: hidden;
   }
-  .logo { font-size: 22px; font-weight: 800; background: linear-gradient(135deg, #7c3aed, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-  nav a { color: var(--muted); text-decoration: none; margin-left: 30px; font-size: 14px; transition: color .2s; }
-  nav a:hover { color: var(--text); }
+
+  /* Animated Background */
+  .bg-animation {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .bg-animation::before {
+    content: '';
+    position: absolute;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle at 20% 50%, rgba(124, 58, 237, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(168, 85, 247, 0.15) 0%, transparent 50%);
+    animation: bgMove 20s ease-in-out infinite;
+  }
+  @keyframes bgMove {
+    0%, 100% { transform: translate(0, 0); }
+    50% { transform: translate(-50px, -50px); }
+  }
+
+  /* NAV - Glass Effect */
+  nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 60px;
+    position: sticky;
+    top: 0;
+    background: rgba(10, 10, 15, 0.7);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-bottom: 1px solid var(--border);
+    z-index: 100;
+    transition: all 0.3s ease;
+  }
+  .logo { 
+    font-size: 24px; 
+    font-weight: 900; 
+    background: linear-gradient(135deg, #7c3aed, #ec4899);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -1px;
+  }
+  nav a { 
+    color: var(--muted); 
+    text-decoration: none; 
+    margin-left: 32px; 
+    font-size: 14px; 
+    font-weight: 500;
+    transition: all 0.3s ease;
+    position: relative;
+  }
+  nav a:hover { 
+    color: var(--text);
+    transform: translateY(-2px);
+  }
+  nav a::after {
+    content: '';
+    position: absolute;
+    bottom: -4px;
+    left: 0;
+    width: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    transition: width 0.3s ease;
+  }
+  nav a:hover::after {
+    width: 100%;
+  }
 
   /* HERO */
   .hero {
-    text-align: center; padding: 100px 20px 80px;
-    background: radial-gradient(ellipse 80% 50% at 50% 0%, rgba(124,58,237,0.15), transparent);
+    text-align: center;
+    padding: 120px 20px 100px;
+    position: relative;
+    z-index: 1;
   }
-  .badge { display: inline-block; background: rgba(124,58,237,0.2); border: 1px solid rgba(124,58,237,0.4); color: var(--accent2); padding: 6px 16px; border-radius: 20px; font-size: 13px; margin-bottom: 24px; }
-  .hero h1 { font-size: clamp(36px, 6vw, 72px); font-weight: 900; line-height: 1.1; margin-bottom: 20px; }
-  .hero h1 span { background: linear-gradient(135deg, #7c3aed, #ec4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-  .hero p { color: var(--muted); font-size: 18px; max-width: 560px; margin: 0 auto 40px; line-height: 1.6; }
-  .btn { display: inline-block; background: linear-gradient(135deg, #7c3aed, #a855f7); color: #fff; padding: 14px 36px; border-radius: 10px; text-decoration: none; font-weight: 700; font-size: 16px; transition: opacity .2s, transform .2s; }
-  .btn:hover { opacity: .9; transform: translateY(-2px); }
-  .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); margin-left: 12px; }
-  .btn-outline:hover { border-color: var(--accent); }
+  .badge { 
+    display: inline-block;
+    background: var(--glass);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--border);
+    color: var(--accent2);
+    padding: 8px 20px;
+    border-radius: 30px;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 28px;
+    animation: float 3s ease-in-out infinite;
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+  .hero h1 { 
+    font-size: clamp(40px, 7vw, 80px);
+    font-weight: 900;
+    line-height: 1.1;
+    margin-bottom: 24px;
+    letter-spacing: -2px;
+  }
+  .hero h1 span { 
+    background: linear-gradient(135deg, #7c3aed, #ec4899);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .hero p { 
+    color: var(--muted);
+    font-size: 18px;
+    max-width: 600px;
+    margin: 0 auto 48px;
+    line-height: 1.7;
+  }
+  
+  /* Buttons */
+  .btn-group {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 32px;
+  }
+  .btn { 
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #7c3aed, #a855f7);
+    color: #fff;
+    padding: 16px 40px;
+    border-radius: 16px;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 16px;
+    transition: all 0.3s ease;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 10px 30px rgba(124, 58, 237, 0.3);
+  }
+  .btn:hover { 
+    transform: translateY(-3px);
+    box-shadow: 0 15px 40px rgba(124, 58, 237, 0.4);
+  }
+  .btn-outline { 
+    background: var(--glass);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--border);
+    color: var(--text);
+    box-shadow: none;
+  }
+  .btn-outline:hover { 
+    border-color: var(--accent);
+    background: rgba(124, 58, 237, 0.1);
+  }
+  .btn-small {
+    padding: 10px 24px;
+    font-size: 14px;
+    border-radius: 12px;
+  }
 
-  /* FEATURES */
-  .section { padding: 80px 60px; max-width: 1200px; margin: 0 auto; }
-  .section-title { text-align: center; font-size: 36px; font-weight: 800; margin-bottom: 12px; }
-  .section-sub { text-align: center; color: var(--muted); margin-bottom: 56px; font-size: 16px; }
-  .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+  /* Links Section */
+  .links-section {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .link-card {
+    background: var(--glass);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px 28px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-decoration: none;
+    color: var(--text);
+    transition: all 0.3s ease;
+  }
+  .link-card:hover {
+    transform: translateY(-3px);
+    border-color: var(--accent);
+    box-shadow: 0 10px 30px rgba(124, 58, 237, 0.2);
+  }
+  .link-icon {
+    font-size: 24px;
+  }
+  .link-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .link-label {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .link-value {
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  /* SECTION */
+  .section { 
+    padding: 100px 60px;
+    max-width: 1400px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 1;
+  }
+  .section-title { 
+    text-align: center;
+    font-size: 42px;
+    font-weight: 900;
+    margin-bottom: 16px;
+    letter-spacing: -1px;
+  }
+  .section-sub { 
+    text-align: center;
+    color: var(--muted);
+    margin-bottom: 64px;
+    font-size: 17px;
+  }
+
+  /* FEATURES - Glass Cards */
+  .features { 
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 24px;
+  }
   .feature-card {
-    background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 28px;
-    transition: border-color .2s, transform .2s;
+    background: var(--glass);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 36px;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
   }
-  .feature-card:hover { border-color: var(--accent); transform: translateY(-4px); }
-  .feature-icon { font-size: 32px; margin-bottom: 16px; }
-  .feature-card h3 { font-size: 18px; margin-bottom: 8px; }
-  .feature-card p { color: var(--muted); font-size: 14px; line-height: 1.6; }
+  .feature-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    opacity: 0;
+    transition: opacity 0.4s ease;
+  }
+  .feature-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-8px);
+    box-shadow: 0 20px 60px rgba(124, 58, 237, 0.3);
+  }
+  .feature-card:hover::before {
+    opacity: 1;
+  }
+  .feature-icon { 
+    font-size: 40px;
+    margin-bottom: 20px;
+    display: block;
+  }
+  .feature-card h3 { 
+    font-size: 20px;
+    margin-bottom: 12px;
+    font-weight: 700;
+  }
+  .feature-card p { 
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.7;
+  }
 
-  /* PRICING */
-  .pricing { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; }
+  /* PRICING - Glass Cards */
+  .pricing { 
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 32px;
+  }
   .plan {
-    background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 36px 28px;
-    position: relative; transition: transform .2s;
+    background: var(--glass);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid var(--border);
+    border-radius: 28px;
+    padding: 44px 36px;
+    position: relative;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   }
-  .plan:hover { transform: translateY(-6px); }
-  .plan.popular { border-color: var(--accent); }
+  .plan:hover { 
+    transform: translateY(-10px);
+    box-shadow: 0 25px 70px rgba(124, 58, 237, 0.3);
+  }
+  .plan.popular { 
+    border-color: var(--accent);
+    box-shadow: 0 20px 60px rgba(124, 58, 237, 0.2);
+  }
   .popular-badge {
-    position: absolute; top: -14px; left: 50%; transform: translateX(-50%);
-    background: linear-gradient(135deg, #7c3aed, #a855f7); color: #fff;
-    padding: 4px 18px; border-radius: 20px; font-size: 12px; font-weight: 700;
+    position: absolute;
+    top: -16px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, #7c3aed, #a855f7);
+    color: #fff;
+    padding: 6px 24px;
+    border-radius: 30px;
+    font-size: 12px;
+    font-weight: 700;
+    box-shadow: 0 8px 20px rgba(124, 58, 237, 0.4);
   }
-  .plan-name { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
-  .plan-price { font-size: 48px; font-weight: 900; margin: 16px 0 4px; }
-  .plan-price span { font-size: 18px; color: var(--muted); font-weight: 400; }
-  .plan-desc { color: var(--muted); font-size: 14px; margin-bottom: 28px; }
-  .plan ul { list-style: none; margin-bottom: 32px; }
-  .plan ul li { padding: 8px 0; font-size: 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
-  .plan ul li:last-child { border: none; }
-  .check { color: var(--green); font-size: 16px; }
-  .cross { color: var(--muted); font-size: 16px; }
-  .plan .btn { width: 100%; text-align: center; }
+  .plan-name { 
+    font-size: 24px;
+    font-weight: 800;
+    margin-bottom: 12px;
+  }
+  .plan-price { 
+    font-size: 52px;
+    font-weight: 900;
+    margin: 20px 0 8px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .plan-price span { 
+    font-size: 18px;
+    color: var(--muted);
+    font-weight: 500;
+  }
+  .plan-desc { 
+    color: var(--muted);
+    font-size: 14px;
+    margin-bottom: 32px;
+  }
+  .plan ul { 
+    list-style: none;
+    margin-bottom: 36px;
+  }
+  .plan ul li { 
+    padding: 12px 0;
+    font-size: 14px;
+    border-bottom: 1px solid rgba(124, 58, 237, 0.1);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: all 0.3s ease;
+  }
+  .plan ul li:hover {
+    padding-left: 8px;
+  }
+  .plan ul li:last-child { 
+    border: none;
+  }
+  .check { 
+    color: var(--green);
+    font-size: 18px;
+    font-weight: 700;
+  }
+  .cross { 
+    color: var(--muted);
+    font-size: 18px;
+  }
+  .plan .btn { 
+    width: 100%;
+    text-align: center;
+  }
 
   /* FAQ */
-  .faq { max-width: 720px; margin: 0 auto; }
-  .faq-item { border-bottom: 1px solid var(--border); padding: 20px 0; }
-  .faq-item h4 { font-size: 16px; margin-bottom: 10px; cursor: pointer; }
-  .faq-item p { color: var(--muted); font-size: 14px; line-height: 1.6; }
+  .faq { 
+    max-width: 800px;
+    margin: 0 auto;
+  }
+  .faq-item { 
+    background: var(--glass);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 28px 32px;
+    margin-bottom: 20px;
+    transition: all 0.3s ease;
+  }
+  .faq-item:hover {
+    border-color: var(--accent);
+    transform: translateX(8px);
+  }
+  .faq-item h4 { 
+    font-size: 17px;
+    margin-bottom: 12px;
+    font-weight: 700;
+  }
+  .faq-item p { 
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.7;
+  }
 
   /* FOOTER */
-  footer { text-align: center; padding: 40px; color: var(--muted); font-size: 13px; border-top: 1px solid var(--border); }
+  footer { 
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--muted);
+    font-size: 13px;
+    border-top: 1px solid var(--border);
+    background: var(--glass);
+    backdrop-filter: blur(20px);
+  }
 
   @media (max-width: 768px) {
-    nav { padding: 16px 20px; }
-    .section { padding: 60px 20px; }
-    .hero { padding: 70px 20px 60px; }
+    nav { padding: 16px 24px; }
+    .section { padding: 60px 24px; }
+    .hero { padding: 80px 20px 60px; }
+    .btn-group { flex-direction: column; }
+    .links-section { flex-direction: column; }
+  }
+
+  /* Smooth Scroll */
+  html {
+    scroll-behavior: smooth;
   }
 </style>
 </head>
 <body>
 
+<div class="bg-animation"></div>
+
 <nav>
   <div class="logo">LastWar</div>
   <div>
     <a href="#features">Функции</a>
-    <a href="#pricing">Цены</a>
+    <a href="#pricing">Тарифы</a>
     <a href="#faq">FAQ</a>
+    <a href="#changelog">ChangeLog</a>
   </div>
 </nav>
 
 <section class="hero">
   <div class="badge">✦ Minecraft 1.21.4 Fabric</div>
   <h1>Лучший чит-клиент<br>для <span>Minecraft</span></h1>
-  <p>LastWar — мощный Fabric-клиент с KillAura, Nuker, ESP и десятками других модулей. Обходит античиты FunTime, HollyWorld и другие.</p>
-  <a href="#pricing" class="btn">Купить доступ</a>
-  <a href="#features" class="btn btn-outline">Узнать больше</a>
+  <p>LastWar — мощный Fabric-клиент с AI KillAura, ESP, Helpers и десятками других модулей. Практически невозможно обнаружить на проверке.</p>
+  
+  <div class="btn-group">
+    <a href="#pricing" class="btn">Free</a>
+    <a href="#pricing" class="btn">Paid</a>
+    <a href="#pricing" class="btn">Alpha</a>
+    <a href="#changelog" class="btn btn-outline">ChangeLog</a>
+  </div>
+
+  <div class="links-section">
+    <a href="https://www.youtube.com/@LastWar_Client" target="_blank" class="link-card">
+      <span class="link-icon">📺</span>
+      <div class="link-text">
+        <span class="link-label">YouTube</span>
+        <span class="link-value">@LastWar_Client</span>
+      </div>
+    </a>
+    <a href="https://discord.gg/xnayQjFAKp" target="_blank" class="link-card">
+      <span class="link-icon">💬</span>
+      <div class="link-text">
+        <span class="link-label">Discord</span>
+        <span class="link-value">Присоединиться</span>
+      </div>
+    </a>
+  </div>
 </section>
 
 <div class="section" id="features">
@@ -121,8 +506,8 @@
   <div class="features">
     <div class="feature-card">
       <div class="feature-icon">⚔️</div>
-      <h3>KillAura</h3>
-      <p>Автоматическая атака с несколькими режимами: ReallyWorld, FunTime, SpookyTime, HVH. Плавная ротация, GCD, промахи.</p>
+      <h3>AI KillAura</h3>
+      <p>Уникальная система AI-ротации которая обучается на твоих движениях и имитирует человека. Несколько режимов для разных серверов.</p>
     </div>
     <div class="feature-card">
       <div class="feature-icon">👁️</div>
@@ -130,34 +515,24 @@
       <p>BlockESP, GlowESP, TargetESP, NameTags с уроном и здоровьем. Видишь всех игроков и предметы сквозь стены.</p>
     </div>
     <div class="feature-card">
-      <div class="feature-icon">⛏️</div>
-      <h3>Nuker</h3>
-      <p>Автоматически ломает блоки вокруг с умной ротацией. Учитывает инструмент в руке — кирка ломает только камень.</p>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon">🚀</div>
-      <h3>Movement</h3>
-      <p>Speed, Flight, NoFall, Phase, Blink, ElytraTarget и другие модули движения. Обходы для популярных серверов.</p>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon">🛡️</div>
-      <h3>AutoTotem & AutoPotion</h3>
-      <p>Автоматически ставит тотем при низком здоровье и пьёт зелья. Работает быстрее чем любой человек.</p>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon">🎯</div>
-      <h3>CrystalAura</h3>
-      <p>Автоматическая расстановка и подрыв кристаллов. Оптимальный расчёт урона по цели.</p>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon">🤖</div>
-      <h3>AI-режимы</h3>
-      <p>Уникальная система AI-ротации которая обучается на твоих движениях и имитирует человека.</p>
-    </div>
-    <div class="feature-card">
       <div class="feature-icon">🔧</div>
       <h3>Helpers</h3>
       <p>FTHelper, HWHelper — быстрое использование предметов по бинду. Трапки, дезориентация, пласт одной кнопкой.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🛡️</div>
+      <h3>Скрытность</h3>
+      <p>Чит практически невозможно найти на проверке читов. Продвинутые методы обхода античитов и маскировки.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔄</div>
+      <h3>Стабильные обновления</h3>
+      <p>Регулярные обновления при выходе новых версий Minecraft и обновлении античитов на популярных серверах.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🛒</div>
+      <h3>AutoBuy</h3>
+      <p>Автоматическая покупка предметов на серверах. Доступно только в платных версиях.</p>
     </div>
   </div>
 </div>
@@ -168,54 +543,72 @@
   <div class="pricing">
 
     <div class="plan">
-      <div class="plan-name">Basic</div>
-      <div class="plan-price">149<span> ₽/мес</span></div>
-      <div class="plan-desc">Для начинающих игроков</div>
+      <div class="plan-name">Free</div>
+      <div class="plan-price">0<span> ₽</span></div>
+      <div class="plan-desc">Бесплатная версия для всех</div>
       <ul>
-        <li><span class="check">✓</span> KillAura (базовые режимы)</li>
+        <li><span class="check">✓</span> AI KillAura</li>
         <li><span class="check">✓</span> ESP & NameTags</li>
         <li><span class="check">✓</span> Movement модули</li>
-        <li><span class="check">✓</span> AutoTotem</li>
-        <li><span class="cross">✗</span> CrystalAura</li>
-        <li><span class="cross">✗</span> AI-режимы</li>
-        <li><span class="cross">✗</span> Приоритетная поддержка</li>
+        <li><span class="check">✓</span> Nuker</li>
+        <li><span class="check">✓</span> Helpers</li>
+        <li><span class="cross">✗</span> AutoBuy</li>
+        <li><span class="cross">✗</span> Стабильные обновления</li>
+        <li><span class="cross">✗</span> Высокая скрытность</li>
       </ul>
-      <a href="#" class="btn btn-outline">Купить Basic</a>
+      <a href="#" class="btn btn-outline">Ключ: "Free"</a>
     </div>
 
     <div class="plan popular">
       <div class="popular-badge">★ Популярный</div>
-      <div class="plan-name">Premium</div>
-      <div class="plan-price">299<span> ₽/мес</span></div>
+      <div class="plan-name">Paid</div>
+      <div class="plan-price">199<span> ₽/мес</span></div>
       <div class="plan-desc">Для серьёзных игроков</div>
       <ul>
-        <li><span class="check">✓</span> Все функции Basic</li>
-        <li><span class="check">✓</span> CrystalAura</li>
-        <li><span class="check">✓</span> AI-режимы KillAura</li>
-        <li><span class="check">✓</span> FTHelper & HWHelper</li>
-        <li><span class="check">✓</span> AutoCreeperFarm</li>
-        <li><span class="check">✓</span> Все будущие обновления</li>
-        <li><span class="cross">✗</span> Приоритетная поддержка</li>
+        <li><span class="check">✓</span> Все функции Free</li>
+        <li><span class="check">✓</span> AutoBuy</li>
+        <li><span class="check">✓</span> Стабильные обновления</li>
+        <li><span class="check">✓</span> Отличная скрытность</li>
+        <li><span class="check">✓</span> Уникальная роль в Discord</li>
+        <li><span class="check">✓</span> Приоритетная поддержка</li>
       </ul>
-      <a href="#" class="btn">Купить Premium</a>
+      <a href="https://discord.gg/xnayQjFAKp" target="_blank" class="btn">Купить Paid</a>
     </div>
 
     <div class="plan">
-      <div class="plan-name">Lifetime</div>
-      <div class="plan-price">999<span> ₽</span></div>
-      <div class="plan-desc">Навсегда, без подписки</div>
+      <div class="plan-name">Alpha</div>
+      <div class="plan-price">500<span> ₽/3 мес</span></div>
+      <div class="plan-desc">+2 месяца в подарок!</div>
       <ul>
-        <li><span class="check">✓</span> Все функции Premium</li>
-        <li><span class="check">✓</span> Пожизненный доступ</li>
-        <li><span class="check">✓</span> Приоритетная поддержка</li>
-        <li><span class="check">✓</span> Ранний доступ к фичам</li>
-        <li><span class="check">✓</span> Сброс HWID по запросу</li>
-        <li><span class="check">✓</span> Личный Discord канал</li>
-        <li><span class="check">✓</span> Все будущие обновления</li>
+        <li><span class="check">✓</span> Все функции Paid</li>
+        <li><span class="check">✓</span> Ранние обновления</li>
+        <li><span class="check">✓</span> Уникальная роль в Discord</li>
+        <li><span class="check">✓</span> +2 месяца в подарок</li>
+        <li><span class="check">✓</span> Личное общение с разработчиком</li>
+        <li><span class="check">✓</span> VIP поддержка</li>
       </ul>
-      <a href="#" class="btn btn-outline">Купить Lifetime</a>
+      <a href="https://discord.gg/xnayQjFAKp" target="_blank" class="btn">Купить Alpha</a>
     </div>
 
+  </div>
+</div>
+
+<div class="section" id="changelog">
+  <div class="section-title">ChangeLog</div>
+  <div class="section-sub">Последние обновления</div>
+  <div class="faq">
+    <div class="faq-item">
+      <h4>🎉 v2.1.0 — 02.05.2026</h4>
+      <p>Добавлена система лицензий с тремя тарифами: Free, Paid и Alpha. Улучшена AI KillAura, добавлен AutoBuy для платных версий. Обновлён интерфейс с Glass-эффектом.</p>
+    </div>
+    <div class="faq-item">
+      <h4>⚡ v2.0.5 — 28.04.2026</h4>
+      <p>Исправлены баги с ESP на серверах FunTime. Улучшена производительность Nuker. Добавлены новые режимы для Helpers.</p>
+    </div>
+    <div class="faq-item">
+      <h4>🔧 v2.0.0 — 15.04.2026</h4>
+      <p>Полная переработка AI KillAura. Новая система обхода античитов. Добавлена поддержка Minecraft 1.21.4.</p>
+    </div>
   </div>
 </div>
 
@@ -224,31 +617,31 @@
   <div class="section-sub">Часто задаваемые вопросы</div>
   <div class="faq">
     <div class="faq-item">
-      <h4>🔑 Как получить ключ после оплаты?</h4>
-      <p>После оплаты ключ приходит автоматически в Discord или на почту в течение нескольких минут.</p>
+      <h4>🔑 Как получить ключ?</h4>
+      <p>Для бесплатной версии используйте ключ "Free". Для платных версий — свяжитесь с нами в Discord после оплаты.</p>
     </div>
     <div class="faq-item">
       <h4>💻 На сколько компьютеров действует ключ?</h4>
-      <p>Ключ привязывается к одному компьютеру (HWID). При смене ПК можно сбросить привязку — для Lifetime бесплатно, для остальных за отдельную плату.</p>
+      <p>Free ключ работает на любом количестве компьютеров. Платные ключи (Paid/Alpha) привязываются к одному HWID.</p>
     </div>
     <div class="faq-item">
       <h4>🛡️ Обходит ли читы античит?</h4>
-      <p>LastWar разработан с учётом обходов FunTime, HollyWorld и других популярных серверов. Мы регулярно обновляем обходы.</p>
+      <p>LastWar разработан с учётом обходов FunTime, HollyWorld и других популярных серверов. Платные версии имеют максимальную скрытность.</p>
     </div>
     <div class="faq-item">
       <h4>🔄 Как часто выходят обновления?</h4>
-      <p>Обновления выходят регулярно — при выходе новых версий Minecraft и при необходимости обновить обходы.</p>
+      <p>Paid и Alpha версии получают стабильные обновления регулярно. Alpha пользователи получают ранний доступ к новым функциям.</p>
     </div>
     <div class="faq-item">
       <h4>💬 Где получить поддержку?</h4>
-      <p>Поддержка осуществляется через Discord сервер. Lifetime пользователи получают приоритетный ответ.</p>
+      <p>Поддержка осуществляется через Discord сервер. Paid получают приоритетную поддержку, Alpha — личное общение с разработчиком.</p>
     </div>
   </div>
 </div>
 
 <footer>
-  <p>© 2025 LastWar Client. Все права защищены.</p>
-  <p style="margin-top:8px">Использование на свой страх и риск. Не несём ответственности за бан аккаунта.</p>
+  <p>© 2026 LastWar Client. Все права защищены.</p>
+  <p style="margin-top:12px">Использование на свой страх и риск. Не несём ответственности за бан аккаунта.</p>
 </footer>
 
 </body>
