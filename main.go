@@ -352,19 +352,35 @@ func handleDownload(w http.ResponseWriter, r *http.Request) {
 	var filename string
 	switch plan {
 	case "free":
-		filename = "mods/Free.jar"
+		filename = "./mods/Free.jar"
 	case "paid":
-		filename = "mods/Paid.jar"
+		filename = "./mods/Paid.jar"
 	case "alpha":
-		filename = "mods/Alpha.jar"
+		filename = "./mods/Alpha.jar"
 	default:
 		jsonError(w, "Invalid plan", http.StatusBadRequest)
 		return
 	}
 
-	// Создаем временный файл с токеном
-	// TODO: Здесь нужно модифицировать JAR файл и добавить token.txt
-	// Пока просто отдаем оригинальный файл
+	// Проверяем существование файла
+	if _, err := os.Stat(filename); os.IsNotExist(err) {
+		log.Printf("File not found: %s", filename)
+		
+		// Временная заглушка для тестирования
+		w.Header().Set("Content-Type", "text/plain")
+		fmt.Fprintf(w, "Мод для плана %s пока не загружен на сервер.\n", plan)
+		fmt.Fprintf(w, "Ожидаемый файл: %s\n", filename)
+		fmt.Fprintf(w, "\nСвяжитесь с администратором для загрузки файла.")
+		return
+	}
+
+	// Устанавливаем заголовки для скачивания
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=LastWar-%s.jar", plan))
+	w.Header().Set("Content-Type", "application/java-archive")
+	
+	log.Printf("Serving file: %s for user: %s", filename, username)
+	
+	// Отдаем файл
 	http.ServeFile(w, r, filename)
 }
 
