@@ -1,2 +1,3 @@
 licenses.db
 *.db
+!.gitkeep
