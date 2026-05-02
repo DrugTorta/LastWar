@@ -1,14 +1,18 @@
 package main
 
 import (
+	"archive/zip"
+	"bytes"
 	"crypto/rand"
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -389,14 +393,98 @@ func handleDownload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Создаем модифицированный JAR с токеном
+	modifiedJar, err := addTokenToJar(filename, key)
+	if err != nil {
+		log.Printf("Error adding token to JAR: %v", err)
+		jsonError(w, "Error preparing mod file", http.StatusInternalServerError)
+		return
+	}
+
 	// Устанавливаем заголовки для скачивания
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=LastWar-%s.jar", plan))
 	w.Header().Set("Content-Type", "application/java-archive")
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(modifiedJar)))
 	
-	log.Printf("Serving file: %s for user: %s", filename, username)
+	log.Printf("Serving modified JAR (size: %d bytes) for user: %s with key: %s", len(modifiedJar), username, key)
 	
-	// Отдаем файл
-	http.ServeFile(w, r, filename)
+	// Отдаем модифицированный файл
+	w.Write(modifiedJar)
+}
+
+// ── Добавление token.txt в JAR ────────────────────────────────────────────────
+
+func addTokenToJar(jarPath string, token string) ([]byte, error) {
+	// Читаем оригинальный JAR
+	jarFile, err := os.Open(jarPath)
+	if err != nil {
+		return nil, err
+	}
+	defer jarFile.Close()
+
+	jarInfo, err := jarFile.Stat()
+	if err != nil {
+		return nil, err
+	}
+
+	// Читаем JAR как ZIP
+	zipReader, err := zip.NewReader(jarFile, jarInfo.Size())
+	if err != nil {
+		return nil, err
+	}
+
+	// Создаем новый ZIP в памяти
+	buf := new(bytes.Buffer)
+	zipWriter := zip.NewWriter(buf)
+
+	// Копируем все файлы из оригинального JAR
+	for _, file := range zipReader.File {
+		// Пропускаем старый token.txt если он есть
+		if file.Name == "token.txt" {
+			continue
+		}
+
+		// Копируем файл
+		fileReader, err := file.Open()
+		if err != nil {
+			return nil, err
+		}
+
+		header := &zip.FileHeader{
+			Name:   file.Name,
+			Method: file.Method,
+		}
+		
+		writer, err := zipWriter.CreateHeader(header)
+		if err != nil {
+			fileReader.Close()
+			return nil, err
+		}
+
+		_, err = io.Copy(writer, fileReader)
+		fileReader.Close()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Добавляем token.txt
+	tokenWriter, err := zipWriter.Create("token.txt")
+	if err != nil {
+		return nil, err
+	}
+	_, err = tokenWriter.Write([]byte(token))
+	if err != nil {
+		return nil, err
+	}
+
+	// Закрываем ZIP writer
+	err = zipWriter.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
 }
 
 // ── API: Валидация ключа (вызывается из мода) ─────────────────────────────────
@@ -452,20 +540,27 @@ func handleValidate(w http.ResponseWriter, r *http.Request) {
 
 	// Проверка срока
 	if expiresAt != "" {
-		exp, _ := time.Parse(time.RFC3339, expiresAt)
-		if time.Now().After(exp) {
-			jsonResponse(w, map[string]any{"valid": false, "reason": "key expired"})
-			return
+		exp, err := time.Parse(time.RFC3339, expiresAt)
+		if err != nil {
+			log.Printf("Error parsing expiration date: %v", err)
+		} else {
+			log.Printf("Key %s expires at: %s (now: %s)", req.Key, exp, time.Now())
+			if time.Now().After(exp) {
+				jsonResponse(w, map[string]any{"valid": false, "reason": "key expired"})
+				return
+			}
 		}
 	}
 
 	// HWID привязка (только для платных ключей)
 	if plan != "free" {
 		if hwid == "" && req.HWID != "" {
+			log.Printf("Binding HWID %s to key %s", req.HWID, req.Key)
 			db.Exec(`UPDATE licenses SET hwid=? WHERE key=?`, req.HWID, req.Key)
 			hwid = req.HWID
 		}
 		if hwid != "" && req.HWID != "" && hwid != req.HWID {
+			log.Printf("HWID mismatch for key %s: expected %s, got %s", req.Key, hwid, req.HWID)
 			jsonResponse(w, map[string]any{"valid": false, "reason": "hwid mismatch"})
 			return
 		}
