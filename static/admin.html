@@ -82,9 +82,9 @@
   tr:hover td { background: rgba(124,58,237,0.04); }
   .key-text { font-family: monospace; font-size: 13px; color: #a78bfa; }
   .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
-  .badge.basic { background: rgba(100,116,139,0.2); color: #94a3b8; }
-  .badge.premium { background: rgba(124,58,237,0.2); color: #a78bfa; }
-  .badge.lifetime { background: rgba(234,179,8,0.2); color: #fbbf24; }
+  .badge.free { background: rgba(100,116,139,0.2); color: #94a3b8; }
+  .badge.paid { background: rgba(124,58,237,0.2); color: #a78bfa; }
+  .badge.alpha { background: rgba(234,179,8,0.2); color: #fbbf24; }
   .badge.active { background: rgba(34,197,94,0.15); color: var(--green); }
   .badge.revoked { background: rgba(239,68,68,0.15); color: var(--red); }
   .actions { display: flex; gap: 6px; }
@@ -127,9 +127,9 @@
       <div class="stat-card"><div class="label">Всего ключей</div><div class="value" id="stat-total">—</div></div>
       <div class="stat-card"><div class="label">Активных</div><div class="value green" id="stat-active">—</div></div>
       <div class="stat-card"><div class="label">Отозванных</div><div class="value red" id="stat-revoked">—</div></div>
-      <div class="stat-card"><div class="label">Basic</div><div class="value" id="stat-basic">—</div></div>
-      <div class="stat-card"><div class="label">Premium</div><div class="value yellow" id="stat-premium">—</div></div>
-      <div class="stat-card"><div class="label">Lifetime</div><div class="value green" id="stat-lifetime">—</div></div>
+      <div class="stat-card"><div class="label">Free</div><div class="value" id="stat-basic">—</div></div>
+      <div class="stat-card"><div class="label">Paid</div><div class="value yellow" id="stat-premium">—</div></div>
+      <div class="stat-card"><div class="label">Alpha</div><div class="value green" id="stat-lifetime">—</div></div>
     </div>
 
     <!-- GENERATE -->
@@ -139,9 +139,9 @@
         <div class="form-group">
           <label>Тариф</label>
           <select id="gen-plan">
-            <option value="basic">Basic</option>
-            <option value="premium" selected>Premium</option>
-            <option value="lifetime">Lifetime</option>
+            <option value="free">Free</option>
+            <option value="paid" selected>Paid</option>
+            <option value="alpha">Alpha</option>
           </select>
         </div>
         <div class="form-group">
@@ -231,9 +231,9 @@ function updateStats() {
   document.getElementById('stat-total').textContent = allKeys.length;
   document.getElementById('stat-active').textContent = allKeys.filter(k => k.active).length;
   document.getElementById('stat-revoked').textContent = allKeys.filter(k => !k.active).length;
-  document.getElementById('stat-basic').textContent = allKeys.filter(k => k.plan === 'basic').length;
-  document.getElementById('stat-premium').textContent = allKeys.filter(k => k.plan === 'premium').length;
-  document.getElementById('stat-lifetime').textContent = allKeys.filter(k => k.plan === 'lifetime').length;
+  document.getElementById('stat-basic').textContent = allKeys.filter(k => k.plan === 'free').length;
+  document.getElementById('stat-premium').textContent = allKeys.filter(k => k.plan === 'paid').length;
+  document.getElementById('stat-lifetime').textContent = allKeys.filter(k => k.plan === 'alpha').length;
 }
 
 function filterKeys() {
