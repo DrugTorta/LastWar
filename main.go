@@ -21,7 +21,7 @@ var adminPassword string
 func main() {
 	adminPassword = os.Getenv("ADMIN_PASSWORD")
 	if adminPassword == "" {
-		adminPassword = "admin123" // поменяй в Railway env vars
+		adminPassword = "Fsgfgbff123"
 	}
 
 	port := os.Getenv("PORT")
@@ -45,6 +45,13 @@ func main() {
 		active INTEGER DEFAULT 1,
 		note TEXT
 	)`)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Добавляем бесплатный ключ "Free" если его нет
+	_, err = db.Exec(`INSERT OR IGNORE INTO licenses (key, plan, created_at, active, note) VALUES (?, ?, ?, ?, ?)`,
+		"Free", "free", time.Now().Format(time.RFC3339), 1, "Бесплатная версия для всех")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -113,6 +120,12 @@ func handleValidate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Для Free ключа HWID не проверяется
+	if req.Key == "Free" {
+		jsonResponse(w, map[string]any{"valid": true, "plan": "free"})
+		return
+	}
+
 	var plan, hwid, expiresAt string
 	var active int
 	err := db.QueryRow(
@@ -142,14 +155,16 @@ func handleValidate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// HWID привязка
-	if hwid == "" && req.HWID != "" {
-		db.Exec(`UPDATE licenses SET hwid=? WHERE key=?`, req.HWID, req.Key)
-		hwid = req.HWID
-	}
-	if hwid != "" && req.HWID != "" && hwid != req.HWID {
-		jsonResponse(w, map[string]any{"valid": false, "reason": "hwid mismatch"})
-		return
+	// HWID привязка (только для платных ключей)
+	if plan != "free" {
+		if hwid == "" && req.HWID != "" {
+			db.Exec(`UPDATE licenses SET hwid=? WHERE key=?`, req.HWID, req.Key)
+			hwid = req.HWID
+		}
+		if hwid != "" && req.HWID != "" && hwid != req.HWID {
+			jsonResponse(w, map[string]any{"valid": false, "reason": "hwid mismatch"})
+			return
+		}
 	}
 
 	jsonResponse(w, map[string]any{"valid": true, "plan": plan})
