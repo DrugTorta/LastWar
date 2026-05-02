@@ -335,25 +335,37 @@ func handleDownload(w http.ResponseWriter, r *http.Request) {
 	username := r.URL.Query().Get("username")
 	key := r.URL.Query().Get("key")
 
-	if username == "" || key == "" {
-		jsonError(w, "Username and key required", http.StatusBadRequest)
+	if key == "" {
+		jsonError(w, "Key required", http.StatusBadRequest)
 		return
 	}
 
-	// Проверяем что ключ принадлежит пользователю
-	var userKey sql.NullString
-	err := db.QueryRow(`SELECT license_key FROM users WHERE username=?`, username).Scan(&userKey)
-	if err != nil || !userKey.Valid || userKey.String != key {
-		jsonError(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	// Получаем план
 	var plan string
-	err = db.QueryRow(`SELECT plan FROM licenses WHERE key=?`, key).Scan(&plan)
-	if err != nil {
-		jsonError(w, "Invalid key", http.StatusNotFound)
-		return
+	
+	// Для Free версии не требуется авторизация
+	if key == "Free" {
+		plan = "free"
+	} else {
+		// Для платных версий проверяем авторизацию
+		if username == "" {
+			jsonError(w, "Username required", http.StatusBadRequest)
+			return
+		}
+
+		// Проверяем что ключ принадлежит пользователю
+		var userKey sql.NullString
+		err := db.QueryRow(`SELECT license_key FROM users WHERE username=?`, username).Scan(&userKey)
+		if err != nil || !userKey.Valid || userKey.String != key {
+			jsonError(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		// Получаем план
+		err = db.QueryRow(`SELECT plan FROM licenses WHERE key=?`, key).Scan(&plan)
+		if err != nil {
+			jsonError(w, "Invalid key", http.StatusNotFound)
+			return
+		}
 	}
 
 	// Логируем текущую директорию
