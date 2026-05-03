@@ -70,6 +70,8 @@
     background-clip: text;
     -webkit-text-fill-color: transparent;
     letter-spacing: -1px;
+    text-decoration: none;
+    cursor: pointer;
   }
   .user-info {
     display: flex;
@@ -234,7 +236,7 @@
 <div class="bg-animation"></div>
 
 <nav>
-  <div class="logo">LastWar</div>
+  <a href="/" class="logo">LastWar</a>
   <div class="user-info">
     <span class="username" id="nav-username"></span>
     <button class="logout-btn" onclick="logout()">Выйти</button>
@@ -325,7 +327,7 @@ function showLicenseInfo(data) {
     </div>
     <div class="info-row">
       <span class="info-label">HWID:</span>
-      <span class="info-value">${data.hwid || 'Не привязан'}</span>
+      <span class="info-value">${data.hwid ? 'Привязан' : 'Не привязан'}</span>
     </div>
     <div class="info-row">
       <span class="info-label">Истекает:</span>

@@ -462,12 +462,11 @@
 
 <nav>
   <div class="logo">LastWar</div>
-  <div>
+  <div id="nav-links">
     <a href="#features">Функции</a>
     <a href="#pricing">Тарифы</a>
-    <a href="#faq">FAQ</a>
     <a href="/changelog.html">ChangeLog</a>
-    <a href="/auth.html" style="background: linear-gradient(135deg, #7c3aed, #a855f7); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; font-weight: 700;">Войти</a>
+    <a href="/auth.html" id="auth-link" style="background: linear-gradient(135deg, #7c3aed, #a855f7); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; font-weight: 700;">Войти</a>
   </div>
 </nav>
 
@@ -591,37 +590,25 @@
   </div>
 </div>
 
-<div class="section" id="faq">
-  <div class="section-title">FAQ</div>
-  <div class="section-sub">Часто задаваемые вопросы</div>
-  <div class="faq">
-    <div class="faq-item">
-      <h4>🔑 Как получить ключ?</h4>
-      <p>Для бесплатной версии используйте ключ "Free". Для платных версий — свяжитесь с нами в Discord после оплаты.</p>
-    </div>
-    <div class="faq-item">
-      <h4>💻 На сколько компьютеров действует ключ?</h4>
-      <p>Free ключ работает на любом количестве компьютеров. Платные ключи (Paid/Alpha) привязываются к одному HWID.</p>
-    </div>
-    <div class="faq-item">
-      <h4>🛡️ Обходит ли читы античит?</h4>
-      <p>LastWar разработан с учётом обходов FunTime, HollyWorld и других популярных серверов. Платные версии имеют максимальную скрытность.</p>
-    </div>
-    <div class="faq-item">
-      <h4>🔄 Как часто выходят обновления?</h4>
-      <p>Paid и Alpha версии получают стабильные обновления регулярно. Alpha пользователи получают ранний доступ к новым функциям.</p>
-    </div>
-    <div class="faq-item">
-      <h4>💬 Где получить поддержку?</h4>
-      <p>Поддержка осуществляется через Discord сервер. Paid получают приоритетную поддержку, Alpha — личное общение с разработчиком.</p>
-    </div>
-  </div>
-</div>
+
 
 <footer>
   <p>© 2026 LastWar Client. Все права защищены.</p>
   <p style="margin-top:12px">Использование на свой страх и риск. Не несём ответственности за бан аккаунта.</p>
 </footer>
+
+<script>
+// Проверяем авторизацию пользователя
+window.addEventListener('DOMContentLoaded', () => {
+  const username = localStorage.getItem('username');
+  const authLink = document.getElementById('auth-link');
+  
+  if (username && authLink) {
+    authLink.textContent = 'Личный кабинет';
+    authLink.href = '/dashboard.html';
+  }
+});
+</script>
 
 </body>
 </html>
