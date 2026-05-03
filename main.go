@@ -21,6 +21,7 @@ import (
 
 var db *sql.DB
 var adminPassword string
+var isPostgres bool
 
 func main() {
 	adminPassword = os.Getenv("ADMIN_PASSWORD")
@@ -66,6 +67,9 @@ func main() {
 		log.Fatal("Failed to ping database:", err)
 	}
 
+	// Определяем тип базы данных
+	isPostgres = databaseURL != ""
+
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS licenses (
 		key TEXT PRIMARY KEY,
 		plan TEXT NOT NULL,
@@ -79,6 +83,23 @@ func main() {
 	)`)
 	if err != nil {
 		log.Fatal("Failed to create licenses table:", err)
+	}
+
+	// Миграция: добавляем новые колонки если их нет
+	if isPostgres {
+		db.Exec(`ALTER TABLE licenses ADD COLUMN IF NOT EXISTS activated_at TIMESTAMP`)
+		db.Exec(`ALTER TABLE licenses ADD COLUMN IF NOT EXISTS duration_days INTEGER`)
+	} else {
+		// SQLite не поддерживает IF NOT EXISTS для ALTER TABLE, проверяем вручную
+		var count int
+		db.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('licenses') WHERE name='activated_at'`).Scan(&count)
+		if count == 0 {
+			db.Exec(`ALTER TABLE licenses ADD COLUMN activated_at TIMESTAMP`)
+		}
+		db.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('licenses') WHERE name='duration_days'`).Scan(&count)
+		if count == 0 {
+			db.Exec(`ALTER TABLE licenses ADD COLUMN duration_days INTEGER`)
+		}
 	}
 
 	// Таблица пользователей
@@ -282,14 +303,19 @@ func handleUserInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var query string
+	if isPostgres {
+		query = `SELECT plan, COALESCE(hwid,''), COALESCE(expires_at::text,''), active FROM licenses WHERE key=$1`
+	} else {
+		query = `SELECT plan, COALESCE(hwid,''), COALESCE(datetime(expires_at),''), active FROM licenses WHERE key=$1`
+	}
+
 	var plan, hwid, expiresAt string
 	var active int
-	err = db.QueryRow(
-		`SELECT plan, COALESCE(hwid,''), COALESCE(expires_at::text,''), active FROM licenses WHERE key=$1`,
-		licenseKey.String,
-	).Scan(&plan, &hwid, &expiresAt, &active)
+	err = db.QueryRow(query, licenseKey.String).Scan(&plan, &hwid, &expiresAt, &active)
 
 	if err != nil {
+		log.Printf("Error getting license info: %v", err)
 		jsonError(w, "License not found", http.StatusNotFound)
 		return
 	}
@@ -594,12 +620,16 @@ func handleValidate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var query string
+	if isPostgres {
+		query = `SELECT plan, COALESCE(hwid,''), COALESCE(expires_at::text,''), active FROM licenses WHERE key=$1`
+	} else {
+		query = `SELECT plan, COALESCE(hwid,''), COALESCE(datetime(expires_at),''), active FROM licenses WHERE key=$1`
+	}
+
 	var plan, hwid, expiresAt string
 	var active int
-	err := db.QueryRow(
-		`SELECT plan, COALESCE(hwid,''), COALESCE(expires_at::text,''), active FROM licenses WHERE key=$1`,
-		req.Key,
-	).Scan(&plan, &hwid, &expiresAt, &active)
+	err := db.QueryRow(query, req.Key).Scan(&plan, &hwid, &expiresAt, &active)
 
 	if err == sql.ErrNoRows {
 		jsonResponse(w, map[string]any{"valid": false, "reason": "key not found"})
@@ -702,7 +732,9 @@ func handleGenerate(w http.ResponseWriter, r *http.Request) {
 				`INSERT INTO licenses (key, plan, created_at, duration_days, note) VALUES ($1,$2,$3,$4,$5)`,
 				key, req.Plan, time.Now(), durationDays, req.Note,
 			)
-			if err == nil {
+			if err != nil {
+				log.Printf("Error creating key %s: %v", key, err)
+			} else {
 				keys = append(keys, key)
 			}
 		}
@@ -714,8 +746,16 @@ func handleGenerate(w http.ResponseWriter, r *http.Request) {
 // ── API: Список ключей ────────────────────────────────────────────────────────
 
 func handleListKeys(w http.ResponseWriter, r *http.Request) {
-	rows, err := db.Query(`SELECT key, plan, COALESCE(hwid,''), created_at, COALESCE(activated_at::text,''), COALESCE(expires_at::text,''), COALESCE(duration_days,0), active, COALESCE(note,'') FROM licenses ORDER BY created_at DESC`)
+	var query string
+	if isPostgres {
+		query = `SELECT key, plan, COALESCE(hwid,''), created_at, COALESCE(activated_at::text,''), COALESCE(expires_at::text,''), COALESCE(duration_days,0), active, COALESCE(note,'') FROM licenses ORDER BY created_at DESC`
+	} else {
+		query = `SELECT key, plan, COALESCE(hwid,''), created_at, COALESCE(datetime(activated_at),''), COALESCE(datetime(expires_at),''), COALESCE(duration_days,0), active, COALESCE(note,'') FROM licenses ORDER BY created_at DESC`
+	}
+	
+	rows, err := db.Query(query)
 	if err != nil {
+		log.Printf("Error listing keys: %v", err)
 		jsonError(w, "DB error", http.StatusInternalServerError)
 		return
 	}
@@ -736,7 +776,11 @@ func handleListKeys(w http.ResponseWriter, r *http.Request) {
 	var list []KeyInfo
 	for rows.Next() {
 		var k KeyInfo
-		rows.Scan(&k.Key, &k.Plan, &k.HWID, &k.CreatedAt, &k.ActivatedAt, &k.ExpiresAt, &k.DurationDays, &k.Active, &k.Note)
+		err := rows.Scan(&k.Key, &k.Plan, &k.HWID, &k.CreatedAt, &k.ActivatedAt, &k.ExpiresAt, &k.DurationDays, &k.Active, &k.Note)
+		if err != nil {
+			log.Printf("Error scanning key: %v", err)
+			continue
+		}
 		list = append(list, k)
 	}
 	if list == nil {
