@@ -71,7 +71,9 @@ func main() {
 		plan TEXT NOT NULL,
 		hwid TEXT,
 		created_at TIMESTAMP NOT NULL,
+		activated_at TIMESTAMP,
 		expires_at TIMESTAMP,
+		duration_days INTEGER,
 		active INTEGER DEFAULT 1,
 		note TEXT
 	)`)
@@ -324,7 +326,9 @@ func handleActivateKey(w http.ResponseWriter, r *http.Request) {
 	// Проверяем существование ключа
 	var plan string
 	var active int
-	err := db.QueryRow(`SELECT plan, active FROM licenses WHERE key=$1`, req.Key).Scan(&plan, &active)
+	var activatedAt sql.NullTime
+	var durationDays sql.NullInt64
+	err := db.QueryRow(`SELECT plan, active, activated_at, duration_days FROM licenses WHERE key=$1`, req.Key).Scan(&plan, &active, &activatedAt, &durationDays)
 	if err == sql.ErrNoRows {
 		jsonError(w, "Invalid key", http.StatusNotFound)
 		return
@@ -337,6 +341,20 @@ func handleActivateKey(w http.ResponseWriter, r *http.Request) {
 	if active == 0 {
 		jsonError(w, "Key is revoked", http.StatusForbidden)
 		return
+	}
+
+	// Если ключ ещё не активирован и имеет срок действия, активируем его
+	if !activatedAt.Valid && durationDays.Valid && durationDays.Int64 > 0 {
+		now := time.Now()
+		expiresAt := now.AddDate(0, 0, int(durationDays.Int64))
+		
+		_, err = db.Exec(`UPDATE licenses SET activated_at=$1, expires_at=$2 WHERE key=$3`, now, expiresAt, req.Key)
+		if err != nil {
+			log.Printf("Failed to activate key %s: %v", req.Key, err)
+			jsonError(w, "Failed to activate key", http.StatusInternalServerError)
+			return
+		}
+		log.Printf("Key %s activated: duration=%d days, expires at %s", req.Key, durationDays.Int64, expiresAt)
 	}
 
 	// Привязываем ключ к пользователю
@@ -653,25 +671,40 @@ func handleGenerate(w http.ResponseWriter, r *http.Request) {
 		req.Count = 50
 	}
 
-	var expiresAt *time.Time
+	// Сохраняем длительность в днях, а не конкретную дату истечения
+	var durationDays *int
 	if req.Days > 0 {
-		t := time.Now().AddDate(0, 0, req.Days)
-		expiresAt = &t
+		durationDays = &req.Days
 	} else if req.Days == -1 {
-		// Тестовый ключ на 2 минуты
-		t := time.Now().Add(2 * time.Minute)
-		expiresAt = &t
+		// Тестовый ключ на 2 минуты - сразу устанавливаем expires_at
+		// так как это особый случай
+		durationDays = nil
 	}
 
 	keys := make([]string, 0, req.Count)
 	for i := 0; i < req.Count; i++ {
 		key := generateKey()
-		_, err := db.Exec(
-			`INSERT INTO licenses (key, plan, created_at, expires_at, note) VALUES ($1,$2,$3,$4,$5)`,
-			key, req.Plan, time.Now(), expiresAt, req.Note,
-		)
-		if err == nil {
-			keys = append(keys, key)
+		
+		if req.Days == -1 {
+			// Тестовый ключ - активируется сразу
+			now := time.Now()
+			expiresAt := now.Add(2 * time.Minute)
+			_, err := db.Exec(
+				`INSERT INTO licenses (key, plan, created_at, activated_at, expires_at, duration_days, note) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+				key, req.Plan, now, now, expiresAt, nil, req.Note,
+			)
+			if err == nil {
+				keys = append(keys, key)
+			}
+		} else {
+			// Обычный ключ - активируется при первом использовании
+			_, err := db.Exec(
+				`INSERT INTO licenses (key, plan, created_at, duration_days, note) VALUES ($1,$2,$3,$4,$5)`,
+				key, req.Plan, time.Now(), durationDays, req.Note,
+			)
+			if err == nil {
+				keys = append(keys, key)
+			}
 		}
 	}
 
@@ -681,7 +714,7 @@ func handleGenerate(w http.ResponseWriter, r *http.Request) {
 // ── API: Список ключей ────────────────────────────────────────────────────────
 
 func handleListKeys(w http.ResponseWriter, r *http.Request) {
-	rows, err := db.Query(`SELECT key, plan, COALESCE(hwid,''), created_at, COALESCE(expires_at::text,''), active, COALESCE(note,'') FROM licenses ORDER BY created_at DESC`)
+	rows, err := db.Query(`SELECT key, plan, COALESCE(hwid,''), created_at, COALESCE(activated_at::text,''), COALESCE(expires_at::text,''), COALESCE(duration_days,0), active, COALESCE(note,'') FROM licenses ORDER BY created_at DESC`)
 	if err != nil {
 		jsonError(w, "DB error", http.StatusInternalServerError)
 		return
@@ -689,19 +722,21 @@ func handleListKeys(w http.ResponseWriter, r *http.Request) {
 	defer rows.Close()
 
 	type KeyInfo struct {
-		Key       string `json:"key"`
-		Plan      string `json:"plan"`
-		HWID      string `json:"hwid"`
-		CreatedAt string `json:"created_at"`
-		ExpiresAt string `json:"expires_at"`
-		Active    int    `json:"active"`
-		Note      string `json:"note"`
+		Key          string `json:"key"`
+		Plan         string `json:"plan"`
+		HWID         string `json:"hwid"`
+		CreatedAt    string `json:"created_at"`
+		ActivatedAt  string `json:"activated_at"`
+		ExpiresAt    string `json:"expires_at"`
+		DurationDays int    `json:"duration_days"`
+		Active       int    `json:"active"`
+		Note         string `json:"note"`
 	}
 
 	var list []KeyInfo
 	for rows.Next() {
 		var k KeyInfo
-		rows.Scan(&k.Key, &k.Plan, &k.HWID, &k.CreatedAt, &k.ExpiresAt, &k.Active, &k.Note)
+		rows.Scan(&k.Key, &k.Plan, &k.HWID, &k.CreatedAt, &k.ActivatedAt, &k.ExpiresAt, &k.DurationDays, &k.Active, &k.Note)
 		list = append(list, k)
 	}
 	if list == nil {
