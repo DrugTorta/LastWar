@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -32,49 +33,72 @@ func main() {
 		port = "8080"
 	}
 
-	// Создаем папку database если её нет
-	if err := os.MkdirAll("./database", 0755); err != nil {
-		log.Fatal("Failed to create database directory:", err)
-	}
-
+	// Подключение к базе данных
 	var err error
-	db, err = sql.Open("sqlite3", "./database/licenses.db")
-	if err != nil {
-		log.Fatal(err)
+	
+	// Проверяем наличие PostgreSQL (Railway автоматически создает DATABASE_URL)
+	databaseURL := os.Getenv("DATABASE_URL")
+	if databaseURL != "" {
+		// PostgreSQL (Railway)
+		log.Println("Connecting to PostgreSQL...")
+		db, err = sql.Open("postgres", databaseURL)
+		if err != nil {
+			log.Fatal("Failed to connect to PostgreSQL:", err)
+		}
+		log.Println("✅ PostgreSQL connected successfully")
+	} else {
+		// SQLite (локальная разработка)
+		log.Println("Using SQLite for local development...")
+		dbPath := "./database/licenses.db"
+		if err := os.MkdirAll("./database", 0755); err != nil {
+			log.Fatal("Failed to create database directory:", err)
+		}
+		db, err = sql.Open("sqlite3", dbPath)
+		if err != nil {
+			log.Fatal("Failed to open SQLite:", err)
+		}
+		log.Println("✅ SQLite connected successfully:", dbPath)
 	}
 	defer db.Close()
+
+	// Проверяем подключение
+	if err = db.Ping(); err != nil {
+		log.Fatal("Failed to ping database:", err)
+	}
 
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS licenses (
 		key TEXT PRIMARY KEY,
 		plan TEXT NOT NULL,
 		hwid TEXT,
-		created_at TEXT NOT NULL,
-		expires_at TEXT,
+		created_at TIMESTAMP NOT NULL,
+		expires_at TIMESTAMP,
 		active INTEGER DEFAULT 1,
 		note TEXT
 	)`)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Failed to create licenses table:", err)
 	}
 
 	// Таблица пользователей
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS users (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		id SERIAL PRIMARY KEY,
 		username TEXT UNIQUE NOT NULL,
 		password TEXT NOT NULL,
 		license_key TEXT,
-		created_at TEXT NOT NULL,
+		created_at TIMESTAMP NOT NULL,
 		FOREIGN KEY(license_key) REFERENCES licenses(key)
 	)`)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Failed to create users table:", err)
 	}
 
 	// Добавляем бесплатный ключ "Free" если его нет
-	_, err = db.Exec(`INSERT OR IGNORE INTO licenses (key, plan, created_at, active, note) VALUES (?, ?, ?, ?, ?)`,
-		"Free", "free", time.Now().Format(time.RFC3339), 1, "Бесплатная версия для всех")
+	_, err = db.Exec(`INSERT INTO licenses (key, plan, created_at, active, note) 
+		VALUES ($1, $2, $3, $4, $5) 
+		ON CONFLICT (key) DO NOTHING`,
+		"Free", "free", time.Now(), 1, "Бесплатная версия для всех")
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Failed to insert Free key:", err)
 	}
 
 	// Статические файлы
@@ -176,8 +200,8 @@ func handleRegister(w http.ResponseWriter, r *http.Request) {
 	hashedPassword := fmt.Sprintf("%x", []byte(req.Password))
 
 	_, err := db.Exec(
-		`INSERT INTO users (username, password, created_at) VALUES (?, ?, ?)`,
-		req.Username, hashedPassword, time.Now().Format(time.RFC3339),
+		`INSERT INTO users (username, password, created_at) VALUES ($1, $2, $3)`,
+		req.Username, hashedPassword, time.Now(),
 	)
 	if err != nil {
 		jsonError(w, "Username already exists", http.StatusConflict)
@@ -208,7 +232,7 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 
 	var licenseKey sql.NullString
 	err := db.QueryRow(
-		`SELECT license_key FROM users WHERE username=? AND password=?`,
+		`SELECT license_key FROM users WHERE username=$1 AND password=$2`,
 		req.Username, hashedPassword,
 	).Scan(&licenseKey)
 
@@ -238,7 +262,7 @@ func handleUserInfo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var licenseKey sql.NullString
-	err := db.QueryRow(`SELECT license_key FROM users WHERE username=?`, username).Scan(&licenseKey)
+	err := db.QueryRow(`SELECT license_key FROM users WHERE username=$1`, username).Scan(&licenseKey)
 	if err == sql.ErrNoRows {
 		jsonError(w, "User not found", http.StatusNotFound)
 		return
@@ -259,7 +283,7 @@ func handleUserInfo(w http.ResponseWriter, r *http.Request) {
 	var plan, hwid, expiresAt string
 	var active int
 	err = db.QueryRow(
-		`SELECT plan, COALESCE(hwid,''), COALESCE(expires_at,''), active FROM licenses WHERE key=?`,
+		`SELECT plan, COALESCE(hwid,''), COALESCE(expires_at::text,''), active FROM licenses WHERE key=$1`,
 		licenseKey.String,
 	).Scan(&plan, &hwid, &expiresAt, &active)
 
@@ -300,7 +324,7 @@ func handleActivateKey(w http.ResponseWriter, r *http.Request) {
 	// Проверяем существование ключа
 	var plan string
 	var active int
-	err := db.QueryRow(`SELECT plan, active FROM licenses WHERE key=?`, req.Key).Scan(&plan, &active)
+	err := db.QueryRow(`SELECT plan, active FROM licenses WHERE key=$1`, req.Key).Scan(&plan, &active)
 	if err == sql.ErrNoRows {
 		jsonError(w, "Invalid key", http.StatusNotFound)
 		return
@@ -316,7 +340,7 @@ func handleActivateKey(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Привязываем ключ к пользователю
-	_, err = db.Exec(`UPDATE users SET license_key=? WHERE username=?`, req.Key, req.Username)
+	_, err = db.Exec(`UPDATE users SET license_key=$1 WHERE username=$2`, req.Key, req.Username)
 	if err != nil {
 		jsonError(w, "Failed to activate key", http.StatusInternalServerError)
 		return
@@ -354,14 +378,14 @@ func handleDownload(w http.ResponseWriter, r *http.Request) {
 
 		// Проверяем что ключ принадлежит пользователю
 		var userKey sql.NullString
-		err := db.QueryRow(`SELECT license_key FROM users WHERE username=?`, username).Scan(&userKey)
+		err := db.QueryRow(`SELECT license_key FROM users WHERE username=$1`, username).Scan(&userKey)
 		if err != nil || !userKey.Valid || userKey.String != key {
 			jsonError(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 
 		// Получаем план
-		err = db.QueryRow(`SELECT plan FROM licenses WHERE key=?`, key).Scan(&plan)
+		err = db.QueryRow(`SELECT plan FROM licenses WHERE key=$1`, key).Scan(&plan)
 		if err != nil {
 			jsonError(w, "Invalid key", http.StatusNotFound)
 			return
@@ -555,7 +579,7 @@ func handleValidate(w http.ResponseWriter, r *http.Request) {
 	var plan, hwid, expiresAt string
 	var active int
 	err := db.QueryRow(
-		`SELECT plan, COALESCE(hwid,''), COALESCE(expires_at,''), active FROM licenses WHERE key=?`,
+		`SELECT plan, COALESCE(hwid,''), COALESCE(expires_at::text,''), active FROM licenses WHERE key=$1`,
 		req.Key,
 	).Scan(&plan, &hwid, &expiresAt, &active)
 
@@ -590,7 +614,7 @@ func handleValidate(w http.ResponseWriter, r *http.Request) {
 	if plan != "free" {
 		if hwid == "" && req.HWID != "" {
 			log.Printf("Binding HWID %s to key %s", req.HWID, req.Key)
-			db.Exec(`UPDATE licenses SET hwid=? WHERE key=?`, req.HWID, req.Key)
+			db.Exec(`UPDATE licenses SET hwid=$1 WHERE key=$2`, req.HWID, req.Key)
 			hwid = req.HWID
 		}
 		if hwid != "" && req.HWID != "" && hwid != req.HWID {
@@ -629,13 +653,13 @@ func handleGenerate(w http.ResponseWriter, r *http.Request) {
 		req.Count = 50
 	}
 
-	var expiresAt *string
+	var expiresAt *time.Time
 	if req.Days > 0 {
-		t := time.Now().AddDate(0, 0, req.Days).Format(time.RFC3339)
+		t := time.Now().AddDate(0, 0, req.Days)
 		expiresAt = &t
 	} else if req.Days == -1 {
 		// Тестовый ключ на 2 минуты
-		t := time.Now().Add(2 * time.Minute).Format(time.RFC3339)
+		t := time.Now().Add(2 * time.Minute)
 		expiresAt = &t
 	}
 
@@ -643,8 +667,8 @@ func handleGenerate(w http.ResponseWriter, r *http.Request) {
 	for i := 0; i < req.Count; i++ {
 		key := generateKey()
 		_, err := db.Exec(
-			`INSERT INTO licenses (key, plan, created_at, expires_at, note) VALUES (?,?,?,?,?)`,
-			key, req.Plan, time.Now().Format(time.RFC3339), expiresAt, req.Note,
+			`INSERT INTO licenses (key, plan, created_at, expires_at, note) VALUES ($1,$2,$3,$4,$5)`,
+			key, req.Plan, time.Now(), expiresAt, req.Note,
 		)
 		if err == nil {
 			keys = append(keys, key)
@@ -657,7 +681,7 @@ func handleGenerate(w http.ResponseWriter, r *http.Request) {
 // ── API: Список ключей ────────────────────────────────────────────────────────
 
 func handleListKeys(w http.ResponseWriter, r *http.Request) {
-	rows, err := db.Query(`SELECT key, plan, COALESCE(hwid,''), created_at, COALESCE(expires_at,''), active, COALESCE(note,'') FROM licenses ORDER BY created_at DESC`)
+	rows, err := db.Query(`SELECT key, plan, COALESCE(hwid,''), created_at, COALESCE(expires_at::text,''), active, COALESCE(note,'') FROM licenses ORDER BY created_at DESC`)
 	if err != nil {
 		jsonError(w, "DB error", http.StatusInternalServerError)
 		return
@@ -697,7 +721,7 @@ func handleRevoke(w http.ResponseWriter, r *http.Request) {
 		Key string `json:"key"`
 	}
 	json.NewDecoder(r.Body).Decode(&req)
-	db.Exec(`UPDATE licenses SET active=0 WHERE key=?`, req.Key)
+	db.Exec(`UPDATE licenses SET active=0 WHERE key=$1`, req.Key)
 	jsonResponse(w, map[string]any{"ok": true})
 }
 
@@ -712,7 +736,7 @@ func handleResetHWID(w http.ResponseWriter, r *http.Request) {
 		Key string `json:"key"`
 	}
 	json.NewDecoder(r.Body).Decode(&req)
-	db.Exec(`UPDATE licenses SET hwid='' WHERE key=?`, req.Key)
+	db.Exec(`UPDATE licenses SET hwid='' WHERE key=$1`, req.Key)
 	jsonResponse(w, map[string]any{"ok": true})
 }
 

@@ -12,6 +12,9 @@ WORKDIR /app
 COPY --from=builder /app/server .
 COPY --from=builder /app/static/ ./static/
 COPY --from=builder /app/mods/ ./mods/
+# Создаем директорию для Railway Volume
+RUN mkdir -p /data && chmod 777 /data
+# Создаем локальную директорию для разработки
 RUN mkdir -p /app/database
 EXPOSE 8080
 CMD ["./server"]
